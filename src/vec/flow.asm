@@ -288,13 +288,13 @@ wd2:		call	Room_EventCaller
 		call	draw_dead
 		jp	wd2
 dth_pos:	dw	0
-draw_dead:	ld	a,0x4D			; лежащий Wally: две половинки
-		call	bmp16
+draw_dead:	ld	a,0x4D			; лежащий Wally: две половинки (верх — кожа, оранжевая)
+		call	bmp16w
 		ld	a,(dth_pos)
 		add	a,0x10
 		ld	(BitmapX),a
 		ld	a,0x4E
-		jp	bmp16w
+		jp	bmp16
 
 ; потерять жизнь; нет жизней — конец игры; иначе дымок и возврат в GameLoop
 Wally_Resurrect:
@@ -316,7 +316,7 @@ wr_nc:		ld	a,(hl)
 		ld	a,0x10
 		ld	(BitmapY),a
 		ld	a,0x4C
-		call	bmp16
+		call	bmp16w			; значок жизни — голова Wally (кожа)
 		ld	a,(WallyLives)
 		or	a
 		jp	z,game_over
@@ -625,7 +625,7 @@ lr0:		push	bc
 		ld	h,0x10
 		ld	(BitmapX),hl
 		ld	a,0x4C
-		call	bmp16
+		call	bmp16w
 		pop	bc
 		dec	b
 		jp	nz,lr0
