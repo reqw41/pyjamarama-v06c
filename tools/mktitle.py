@@ -6,6 +6,7 @@
   art/logo_game.png (256x32, нижняя полоса игры 1:1; цвета PICO-8 1..7)                              -> три плоскости lg_<плоскость>.zx0 (src/vec/logo_data.inc, logo_cfg.inc).
 Маска заставки: на плоскости p пиксель логотипа сохраняется (бит 1) только если в цвете есть бит p; остальное 0xFF; в рантайме AND по уже раскрашенной (бумага белая) полосе."""
 import sys,subprocess,os
+PJ_LANG=os.environ.get('PJ_LANG','ru')
 sys.path.insert(0,'tools')
 from mklogo import render,LOGO,layout
 from collections import Counter
@@ -50,14 +51,16 @@ PICO={1:(255,236,39),2:(255,0,77),3:(41,173,255),4:(0,228,54),5:(182,109,255),6:
 def nearest(c,pal):
     return min(range(len(pal)),key=lambda k:sum((c[i]-pal[k][i])**2 for i in range(3)))
 pcol_t={}                                # (X,Y экрана) -> ZX-цвет 0..6
-if os.path.exists('art/logo_title.png'):
-    im=Image.open('art/logo_title.png').convert('RGBA'); assert im.size==(256,64),'art/logo_title.png должен быть 256x64'
+_lt='art/logo_title_%s.png'%PJ_LANG
+ART_T=_lt if (PJ_LANG!='en' and os.path.exists(_lt)) else 'art/logo_title.png'
+if os.path.exists(ART_T):
+    im=Image.open(ART_T).convert('RGBA'); assert im.size==(256,64),ART_T+' должен быть 256x64'
     for y in range(64):
         for x in range(256):
             r,g,b_,al=im.getpixel((x,y))
             if al<128 or (r>=235 and g>=235 and b_>=235): continue
             pcol_t[(x,120+y)]=nearest((r,g,b_),ZXC)
-    print('логотип заставки из art/logo_title.png: %d пикселей'%len(pcol_t))
+    print('логотип заставки из %s: %d пикселей'%(ART_T,len(pcol_t)))
 else:
     LS,LH,LC=layout(0.7); START=(32-LC)//2; TOP=182-LH+1
     for L in LS:
@@ -129,14 +132,16 @@ cv.resize((768,576),Image.NEAREST).save('build/vec/title_color_preview.png')
 
 # ================= логотип игры: цвета PICO-8 по пикселям, три плоскости =================
 pcol_g={}                                # (x,y холста 256x32) -> код цвета 1..7
-if os.path.exists('art/logo_game.png'):
-    im=Image.open('art/logo_game.png').convert('RGBA'); assert im.size==(256,32),'art/logo_game.png должен быть 256x32'
+_lg='art/logo_game_%s.png'%PJ_LANG
+ART_G=_lg if (PJ_LANG!='en' and os.path.exists(_lg)) else 'art/logo_game.png'
+if os.path.exists(ART_G):
+    im=Image.open(ART_G).convert('RGBA'); assert im.size==(256,32),ART_G+' должен быть 256x32'
     for y in range(32):
         for x in range(256):
             r,g,b_,al=im.getpixel((x,y))
             if al<128 or max(r,g,b_)<70 or (r>=235 and g>=235 and b_>=235): continue
             pcol_g[(x,y)]=1+nearest((r,g,b_),[PICO[k] for k in range(1,8)])
-    print('логотип игры из art/logo_game.png: %d пикселей'%len(pcol_g))
+    print('логотип игры из %s: %d пикселей'%(ART_G,len(pcol_g)))
 else:
     SS,SHH,SC0=layout(0.45); cb=(32-SC0)//2; yb=(32-SHH)//2
     for L in SS:

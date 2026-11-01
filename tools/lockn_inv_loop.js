@@ -18,7 +18,7 @@ const {z2n,n2z,segs,inData}=require('./zxmap');const LO=0x8200,HI=0xFCA0,ATTRZ=0
 const nsym={};for(const l of fs.readFileSync(path.join(ROOT,'build/vec/pyjama.sym'),'latin1').split('\n')){const m=/^(\S+):\s+EQU\s+0x([0-9A-Fa-f]+)/.exec(l);if(m)nsym[m[1]]=parseInt(m[2],16);}
 const ATTR=nsym.ATTR,IMG=fs.readFileSync(path.join(ROOT,'build/vec/pyjama.r0m'));
 const PTRVARS=plug.ptrvars;
-const PRIMN={bmp16:'Bitmap16Draw',beep:'Beep_Effect',tile:'TileDraw',tile_flip:'Tile_DrawFlip',tile_dbl:'Tile_BlitDoubleHeight',milk_full:'Milk_DrawFull',clr_inv:'ScreenClear',clr_fx:'ScreenClearEffect',fx_noise:'FX_WhiteNoise'};
+const PRIMN={bmp16:'Bitmap16Draw',bmp16w:'Bitmap16Draw',beep:'Beep_Effect',tile:'TileDraw',tile_flip:'Tile_DrawFlip',tile_dbl:'Tile_BlitDoubleHeight',milk_full:'Milk_DrawFull',clr_inv:'ScreenClear',clr_fx:'ScreenClearEffect',fx_noise:'FX_WhiteNoise'};
 function mkNative(zmem){
   const n=new CPU80();n.mem.set(IMG);
   for(const [zs,len,vs] of segs)for(let k=0;k<len;k++)n.mem[vs+k]=zmem[zs+k];
@@ -55,6 +55,7 @@ function runNative(n,from,stops,rands){
     if(c.pc===nsym.Pause_Short||c.pc===nsym.Tick_Wait||c.pc===nsym.pause_chk||c.pc===nsym.Invaders_Pause){c.pc=n.mem[c.sp]|n.mem[c.sp+1]<<8;c.sp+=2;continue;}
     if(c.pc===nsym.rnd_a){R[7]=rands.shift()&255;c.pc=n.mem[c.sp]|n.mem[c.sp+1]<<8;c.sp+=2;continue;}
     const pn=hooks[c.pc];if(pn)log.push(PRIM[pn].zx(mirror(n),{a:R[7],b:R[0],c:R[1],d:R[2],e:R[3],h:R[4],l:R[5]}));
+    if(c.pc===nsym.bmp16w){c.pc=n.mem[c.sp]|n.mem[c.sp+1]<<8;c.sp+=2;continue;}
     if(pn==='Beep_Effect'||pn==='FX_WhiteNoise'){c.pc=n.mem[c.sp]|n.mem[c.sp+1]<<8;c.sp+=2;continue;}
     try{c.instruction();}catch(e){const best=Object.entries(nsym).filter(([k,v])=>v<=c.pc).sort((a,b)=>b[1]-a[1])[0];console.log('исключение у',c.pc.toString(16),best);throw e;}if(++t>3e6)throw new Error('нативный '+from+' не завершился, pc '+c.pc.toString(16));
   }

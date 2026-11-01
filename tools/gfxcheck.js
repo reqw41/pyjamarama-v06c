@@ -47,7 +47,7 @@ for(let i=0;i<N;i++){
     const zafter=Uint8Array.from(z.mem);z.mem.set(snap);
     const n=native(zm,screen0,nlabel,nregs);
     // ожидание по плоскостям: sprite — только своя плоскость меняется; тайлы — плоскости по коду цвета; остальное — все три одинаково
-    const PLN=[[0x4F,0],[0x6D,2],[0x9A,1],[0xA4,0],[0xAC,1],[0xBA,2],[0xFF,1]];const INKV=[0,1,2,5,4,3,6,7];
+    const PLN=[[0x4F,0],[0x6D,2],[0x9A,1],[0xA4,0],[0xAC,1],[0xBA,2],[0xFF,1]];const INKV=[0,1,2,5,4,3,7,7];
     const bad=[];
     for(let pl=0;pl<3;pl++){
       let exp=zafter;

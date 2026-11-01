@@ -42,7 +42,7 @@ function mkNative(zmem){
   return n;
 }
 // нативный вызов с перехватом примитивов; возвращает журнал
-const PRIMN={bmp16:'Bitmap16Draw',beep:'Beep_Effect',tile:'TileDraw',tile_flip:'Tile_DrawFlip',tile_dbl:'Tile_BlitDoubleHeight',milk_full:'Milk_DrawFull',clr_inv:'ScreenClear',clr_fx:'ScreenClearEffect'};
+const PRIMN={bmp16:'Bitmap16Draw',bmp16w:'Bitmap16Draw',beep:'Beep_Effect',tile:'TileDraw',tile_flip:'Tile_DrawFlip',tile_dbl:'Tile_BlitDoubleHeight',milk_full:'Milk_DrawFull',clr_inv:'ScreenClear',clr_fx:'ScreenClearEffect'};
 for(const pl of plugins)Object.assign(PRIMN,pl.prims||{});
 const STUBLABELS=['a_arcade','a_magnet','a_rope','Test08_Box','a_rocket_earth','a_rocket_moon','a_win'];
 function callNative(n,fullname,regs,rands){
@@ -67,6 +67,7 @@ function callNative(n,fullname,regs,rands){
       const st={a:R[7],b:R[0],c:R[1],d:R[2],e:R[3],h:R[4],l:R[5]};
       // журнал по ZX-расширителю модели: читает переменные из ЗЕРКАЛА в раскладке ZX
       log.push(PRIM[pn].zx(mirror(n),st));
+      if(c.pc===nsym.bmp16w){c.pc=n.mem[c.sp]|n.mem[c.sp+1]<<8;c.sp+=2;continue;}   // нижняя половина Wally (две плоскости): журнал — как один bmp16, рисование не исполняем
       if(pn==='Beep_Effect'||pn==='FX_WhiteNoise'){c.pc=n.mem[c.sp]|n.mem[c.sp+1]<<8;c.sp+=2;continue;}   // звук играет таймер: в стенде тело beep не исполняем (EI), проверка звука — tools/sndcheck.js
     }
     if(c.pc===nsym.rnd_a&&rands){c.pc=n.mem[c.sp]|n.mem[c.sp+1]<<8;c.sp+=2;continue;}

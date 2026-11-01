@@ -44,6 +44,8 @@ dl_pc:		db	0
 
 ; title_logo: записи по 4 байта (страница плоскости 0, линия, маска бита, цвет ZX); пиксель во всех трёх плоскостях = биты цвета
 title_logo:	ld	a,(tl_n)
+		or	a
+		ret	z			; исключений нет
 		ld	(tl_cnt),a
 		ld	hl,tl_tab
 tl_e:		ld	d,(hl)

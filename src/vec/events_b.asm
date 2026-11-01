@@ -719,3 +719,18 @@ mr_l:		ld	e,38
 		pop	de
 		pop	af
 		ret
+
+; bmp16w: нижняя половина Wally (индекс A) — пижама: XOR во вторую и третью плоскости (код 110 = белый), верхняя половина идёт обычным bmp16 в плоскость 0 (жёлтая кожа).
+; Портит всё (как bmp16).
+bmp16w:		ld	(cb_i),a
+		ld	a,0x20
+		ld	(gx_fo),a
+		ld	a,(cb_i)
+		call	bmp16
+		ld	a,0x40
+		ld	(gx_fo),a
+		ld	a,(cb_i)
+		call	bmp16
+		ld	a,0xFF
+		ld	(gx_fo),a
+		ret

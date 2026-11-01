@@ -18,6 +18,7 @@ function native(zmem,screenInit,label,regs){
   const n=new CPU80();n.mem.set(IMG);for(const [zs,len,vs] of segs)for(let k=0;k<len;k++)n.mem[vs+k]=zmem[zs+k];
   {const v=zmem[SYM.TileStartPtr]|zmem[SYM.TileStartPtr+1]<<8;const w=(z2n(v)||0);n.mem[z2n(SYM.TileStartPtr)]=w&255;n.mem[z2n(SYM.TileStartPtr)+1]=w>>8;}
   for(let i=0;i<0x300;i++)n.mem[nsym.ATTR+i]=zmem[0x5800+i];
+  n.mem[nsym.bmp16w]=0xC3;n.mem[nsym.bmp16w+1]=nsym.bmp16&255;n.mem[nsym.bmp16w+2]=nsym.bmp16>>8;   // Wally целиком в плоскость 0, как у ZX (двухцветность проверяется отдельно)
   zx2n(screenInit,n.mem);
   if(process.env.NEG)n.mem[nsym[label]+2]^=1;   // порча: другая колонка
   const c=n.cpu,R=c.regs,idx={b:0,c:1,d:2,e:3,h:4,l:5,a:7};for(const k in regs)R[idx[k]]=regs[k]&255;

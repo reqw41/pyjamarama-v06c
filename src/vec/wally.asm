@@ -52,7 +52,7 @@ wb2:		push	bc
 		ld	(BitmapY),a
 		ld	a,c
 		inc	a
-		jp	bmp16			; хвостовой вызов
+		jp	bmp16w			; нижняя половина — пижама (две плоскости, белая), верхняя — кожа (жёлтая)
 
 Wally_Erase:	ld	a,(Wally_X)
 		and	7

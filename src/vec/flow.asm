@@ -294,7 +294,7 @@ draw_dead:	ld	a,0x4D			; лежащий Wally: две половинки
 		add	a,0x10
 		ld	(BitmapX),a
 		ld	a,0x4E
-		jp	bmp16
+		jp	bmp16w
 
 ; потерять жизнь; нет жизней — конец игры; иначе дымок и возврат в GameLoop
 Wally_Resurrect:

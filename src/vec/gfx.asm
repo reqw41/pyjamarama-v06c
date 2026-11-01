@@ -178,7 +178,7 @@ gx_setv:	and	7
 		ld	(gx_v),a
 		ret
 		ALIGN	8
-gx_inkv:	db	0,1,2,5,4,3,6,7
+gx_inkv:	db	0,1,2,5,4,3,7,7			; ZX-жёлтый и ZX-белый статики -> код 7 (светло-коричневый); код 6 (белый) — только пижама Wally
 gx_v:		db	0
 gx_vv:		db	0
 gx_m:		db	0
