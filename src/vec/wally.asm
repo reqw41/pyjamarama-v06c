@@ -45,14 +45,14 @@ wb_hi:		add	a,0x2F
 		jp	wb2
 wb1:		ld	a,c
 wb2:		push	bc
-		call	bmp16w			; верхняя половина — кожа (оранжевая, плоскости 1+2)
+		call	wally_half		; половина Wally: белая пижама + оранжевая кожа по MSX (wally_half)
 		pop	bc
 		ld	a,(BitmapY)
 		add	a,0x10
 		ld	(BitmapY),a
 		ld	a,c
 		inc	a
-		jp	bmp16			; нижняя половина — пижама: плоскость 0 (белая)
+		jp	wally_half
 
 Wally_Erase:	ld	a,(Wally_X)
 		and	7

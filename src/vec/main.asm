@@ -15,6 +15,7 @@
 		INCLUDE	"events_a.asm"
 		INCLUDE	"invaders.asm"
 		INCLUDE	"tcolor.asm"
+		INCLUDE	"wally_col_a.inc"
 ; старт: пока сразу в игру (заставка и меню — во фронте, этап 4)
 game_main:	jp	title_start
 gm_w1:		ld	a,1			; для tools/sndcheck.js: цикл опроса звука вне игры (точка возврата beep)
@@ -26,10 +27,10 @@ gm_w1:		ld	a,1			; для tools/sndcheck.js: цикл опроса звука в
 
 		ORG	DATA_END		; низкая память за образом данных: код модулей и таблицы сдвигов (плоскости 1-2 свободны под цвет)
 		INCLUDE	"events_b.asm"
+		INCLUDE	"rocket.asm"		; заполняет зазор перед выровненными таблицами
 		ALIGN	256
 shift_tab:	INCBIN	"../../build/vec/shift.tab"
 		INCLUDE	"end.asm"
-		INCLUDE	"rocket.asm"
 		INCLUDE	"bmp16_gen.inc"
 		INCLUDE	"front.asm"
 		INCLUDE	"logo2.asm"		; логотип игры (три плоскости ZX0) и исключения цвета логотипа заставки

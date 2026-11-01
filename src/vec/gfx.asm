@@ -19,7 +19,8 @@ bmp16:		ld	b,a
 		add	hl,hl
 		add	hl,hl
 		add	hl,hl
-		ld	de,Bmp_Wally
+		ex	de,hl
+		ld	hl,(gx_base)		; база спрайтов: Bmp_Wally или буфер раскрашенного Wally (wally_half)
 		add	hl,de
 		ex	de,hl			; DE = спрайт
 		ld	a,(BitmapX)
@@ -52,7 +53,8 @@ bmp16_slow:	ld	l,a
 		add	hl,hl
 		add	hl,hl
 		add	hl,hl
-		ld	de,Bmp_Wally
+		ex	de,hl
+		ld	hl,(gx_base)
 		add	hl,de
 		ld	(gx_bm_sp),hl
 		ld	a,(BitmapX)
@@ -147,6 +149,7 @@ gx_bm_n:		db	0
 gx_bm_lim:	db	0
 gx_off:		db	0
 gx_fo:		db	0xFF
+gx_base:	dw	Bmp_Wally
 
 ; gx_plane: B = индекс спрайта -> gx_off = смещение страницы плоскости (Wally и дымок — плоскость 0 (цвет 001, жёлтый); остальные движущиеся — 1 и 2 (010, 100))
 gx_plane:	ld	a,(gx_fo)		; gx_fo != 0xFF — принудительная плоскость (спрайт поверх тайлов: цвет ячейки, bmp16c)
