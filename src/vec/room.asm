@@ -296,7 +296,13 @@ dc3:		call	tile
 		pop	bc
 		ret
 
-RoomDraw:	ld	a,(Wally_RoomNo)
+RoomDraw:	ld	a,1			; на время отрисовки комнаты тайлы не очищают плоскости без цвета (экран уже очищен: clear_screen / clr_px)
+		ld	(gx_fresh),a
+		call	rd_body
+		xor	a
+		ld	(gx_fresh),a
+		ret
+rd_body:	ld	a,(Wally_RoomNo)
 		add	a,a
 		ld	e,a
 		ld	d,0

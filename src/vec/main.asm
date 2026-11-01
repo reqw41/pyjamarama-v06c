@@ -4,6 +4,7 @@
 		INCBIN	"../../build/vec/data.bin"
 		INCLUDE	"zxsym.inc"
 		INCLUDE	"layout.inc"
+		INCLUDE	"lang.inc"
 		ORG	0x0000
 		INCLUDE	"hw.asm"
 		INCLUDE	"wally.asm"
@@ -13,7 +14,6 @@
 		INCLUDE	"flow.asm"
 		INCLUDE	"events_a.asm"
 		INCLUDE	"invaders.asm"
-		INCLUDE	"rocket.asm"
 		INCLUDE	"tcolor.asm"
 ; старт: пока сразу в игру (заставка и меню — во фронте, этап 4)
 game_main:	jp	title_start
@@ -29,6 +29,7 @@ gm_w1:		ld	a,1			; для tools/sndcheck.js: цикл опроса звука в
 		ALIGN	256
 shift_tab:	INCBIN	"../../build/vec/shift.tab"
 		INCLUDE	"end.asm"
+		INCLUDE	"rocket.asm"
 		INCLUDE	"bmp16_gen.inc"
 		INCLUDE	"front.asm"
 		INCLUDE	"logo2.asm"		; логотип игры (три плоскости ZX0) и исключения цвета логотипа заставки

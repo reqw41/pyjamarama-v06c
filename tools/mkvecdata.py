@@ -2,8 +2,12 @@
 """Образ данных Pyjamarama для Вектора: ZX 0x8200..0xFC9F -> с 0x0100 подряд без кусков кода ZX (карта сегментов в reloc.json), указатели пересчитаны.
 Выход: build/vec/data.bin (с адреса 0x0100), src/vec/zxsym.inc (метки данных: Label EQU native), build/vec/reloc.json (для стенда сверки).
 Источник байт — снимок V1 (build/v1/ram.bin); код ZX в образ не попадает; таблицы указателей на КОД (Test*/Action*/Update_Room*) — нулями (их строит нативный код)."""
-import re,json,sys
-LO=0x8200; HI=0xFCA0
+import re,json,sys,os
+sys.path.insert(0,'tools')
+import i18n
+LO=0x8200; HI0=0xFCA0
+VBASE=0x10000; HI=VBASE+0x2000       # виртуальная область новых строк перевода: ZX-адреса >= 0x10000 (только внутри этого скрипта)
+PJ_LANG=os.environ.get('PJ_LANG','ru')
 RAM=open('build/v1/ram.bin','rb').read()
 def zb(a): return RAM[a-0x4000]
 items=[]
@@ -21,17 +25,49 @@ for a in range(LO,HI):
     img[a-LO]=0
 # байты данных
 for i,(a,lab,mn,ops) in enumerate(items):
-    if not mn.startswith('DEF') or not (LO<=a<HI): continue
-    n=(items[i+1][0] if i+1<len(items) else HI)-a
+    if not mn.startswith('DEF') or not (LO<=a<HI0): continue
+    n=(items[i+1][0] if i+1<len(items) else HI0)-a
     for k in range(n):
-        if a+k<HI: img[a+k-LO]=zb(a+k)
+        if a+k<HI0: img[a+k-LO]=zb(a+k)
 # --- уплотнение: куски кода ZX (не DEF) в образ не попадают, данные идут подряд; карта сегментов ZX -> Вектор ---
 cov=bytearray(HI-LO)
 for i,(a,lab,mn,ops) in enumerate(items):
-    if not mn.startswith('DEF') or not (LO<=a<HI): continue
-    n=(items[i+1][0] if i+1<len(items) else HI)-a
+    if not mn.startswith('DEF') or not (LO<=a<HI0): continue
+    n=(items[i+1][0] if i+1<len(items) else HI0)-a
     for k in range(n):
-        if a+k<HI: cov[a+k-LO]=1
+        if a+k<HI0: cov[a+k-LO]=1
+# --- перевод: новые строки — в виртуальную область [VBASE..), старые строки выбрасываются (уплотнение), таблицы указателей переопределяются при пересчёте ---
+OVR={}                                  # (адрес таблицы ZX, индекс) -> виртуальный адрес новой строки
+TITLE_DE=0x1704
+if PJ_LANG!='en':
+    T=i18n.load(PJ_LANG); CODE=T.CODE
+    vcur=VBASE
+    def place(data):
+        global vcur
+        a=vcur; img[a-LO:a-LO+len(data)]=data; cov[a-LO:a-LO+len(data)]=b'\x01'*len(data); vcur+=len(data); return a
+    def drop(a):                         # старая строка: обнулить и вывести из образа
+        toks,n=i18n.parse(img,a-LO)
+        for k in range(n): img[a-LO+k]=0; cov[a-LO+k]=0
+        return toks
+    def tbl(nm,n): return labaddr[nm],n
+    # 1) предметы (ObjectTextPtrTable, 28 штук)
+    ot=labaddr['ObjectTextPtrTable']
+    for k,txt in enumerate(T.OBJECTS):
+        old=img[ot-LO+2*k]|img[ot-LO+2*k+1]<<8; drop(old)
+        OVR[(0xE48E,k)]=place(i18n.encode(i18n.lines_to_toks(txt.split('|'),CODE)))
+    # 2) мебель (FurniturePtrTable, индексы из i18n)
+    ft=labaddr['FurniturePtrTable']; olds=[img[ft-LO+2*k]|img[ft-LO+2*k+1]<<8 for k in range(66)]
+    for k,repl in T.FURNITURE.items():
+        old=olds[k]; assert olds.count(old)==1,'строка мебели %d разделяется'%k
+        toks=drop(old); OVR[(0x8CAA,k)]=place(i18n.encode(i18n.replace_texts(toks,repl,CODE)))
+    # 3) именованные строки (ссылки из нативного кода по меткам)
+    for nm,repl in T.STRINGS.items():
+        old=labaddr[nm]; toks=drop(old); a=place(i18n.encode(i18n.replace_texts(toks,repl,CODE)))
+        labaddr[nm]=a; datalab[nm]=a
+    # 4) шрифт: глифы кириллицы в тайлы базы по умолчанию
+    i18n.patch_font(img,labaddr['Bmp_Tiles']-LO,T.GLYPHS,CODE)
+    TITLE_DE=0x1700|T.TITLE_COL
+open('src/vec/lang.inc','w').write('TITLE_DE\tEQU\t0x%04X\n'%TITLE_DE)
 # выброшено из образа: таблицы настройки клавиш и текст главного меню ZX (в порту управление фиксированное, меню нет)
 _names=sorted(labaddr.items(),key=lambda x:x[1])
 _dead_hi=lambda nm:next(a for l,a in _names if a>labaddr[nm])
@@ -72,7 +108,7 @@ def sw(a,v): img[a-LO]=v&255; img[a+1-LO]=(v>>8)&255
 reloc=[]
 for a,n in PTR_TABLES:
     for k in range(n):
-        v=w(a+2*k)
+        v=OVR.get((a,k),w(a+2*k))
         if v and not (LO<=v<HI): print('?? указатель вне данных',hex(a+2*k),hex(v)); continue
         if v: sw(a+2*k,m(v))
         reloc.append(dict(addr=m(a+2*k),kind='data'))
@@ -85,7 +121,7 @@ for k in range(10):
 # --- символьные слова (DEFW с метками): данные -> сдвиг, код -> нули ---
 codeptrs=[]
 for i,(a,lab,mn,ops) in enumerate(items):
-    if mn!='DEFW' or not (LO<=a<HI) or not re.search(r'[A-Za-z_]',ops): continue
+    if mn!='DEFW' or not (LO<=a<HI0) or not re.search(r'[A-Za-z_]',ops): continue
     if any(lo<=a<hi for lo,hi in DEAD): continue          # выброшенные таблицы
     for k,x in enumerate([t.strip() for t in ops.split(',')]):
         if not re.fullmatch(r'[A-Za-z_]\w*',x): continue
@@ -157,7 +193,9 @@ open('build/vec/data.bin','wb').write(bytes(out))
 with open('src/vec/zxsym.inc','w') as f:
     f.write('; сгенерировано tools/mkvecdata.py: метки данных ZX V1 в уплотнённой раскладке Вектора (карта сегментов — reloc.json)\nDATA_END\tEQU 0x%04X\n'%VEC_END)
     for lab,a in sorted(datalab.items(),key=lambda x:x[1]):
-        if LO<=a<HI and not any(lo<=a<hi for lo,hi in DEAD): f.write(f'{fixlab(lab)}\tEQU 0x{m(a):04X}\n')
+        if LO<=a<HI and not any(lo<=a<hi for lo,hi in DEAD):
+            try: f.write(f'{fixlab(lab)}\tEQU 0x{m(a):04X}\n')
+            except ValueError: pass                   # метка в выброшенной (переведённой) строке
     for nm,a in (('Inv_BombFrame',0xF45D),('Str_Full',0xE5CB),('Str_Empty',0xE5D0)): f.write(f'{nm}\tEQU 0x{m(a):04X}\n')
 seen=set();ded=[]
 for r in reloc:

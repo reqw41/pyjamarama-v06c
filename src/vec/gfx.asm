@@ -182,6 +182,8 @@ gx_inkv:	db	0,1,2,5,4,3,6,7
 gx_v:		db	0
 gx_vv:		db	0
 gx_m:		db	0
+gx_fresh:	db	0			; 1 — идёт RoomDraw на очищенном экране
+gx_sk:		db	0
 
 ; HL = адрес растра тайла A из TileStartPtr (A*8), все регистры кроме A, HL сохраняются вызывающим
 gx_tp_ptr:		ld	l,a
@@ -228,6 +230,15 @@ tile_px:	push	af
 		ld	a,c
 		add	a,0x80
 		ld	d,a
+		ld	a,(gx_fresh)		; свежий экран (RoomDraw после очистки), строка >= 5: плоскости без цвета не очищать
+		or	a
+		jp	z,gx_tp1
+		ld	a,b
+		cp	5
+		sbc	a,a
+		cpl
+		and	1
+gx_tp1:		ld	(gx_sk),a
 		ld	a,b
 		add	a,a
 		add	a,a
@@ -246,7 +257,12 @@ gx_tpp:		push	de
 		ld	(gx_vv),a
 		sbc	a,a
 		ld	(gx_m),a
-		ld	b,8
+		or	a
+		jp	nz,gx_tpd
+		ld	a,(gx_sk)
+		or	a
+		jp	nz,gx_tps
+gx_tpd:		ld	b,8
 gx_tpx:		ld	a,(gx_m)
 		and	(hl)
 		ld	(de),a
@@ -254,7 +270,7 @@ gx_tpx:		ld	a,(gx_m)
 		dec	e
 		dec	b
 		jp	nz,gx_tpx
-		pop	hl
+gx_tps:		pop	hl
 		pop	de
 		ld	a,d
 		add	a,0x20
@@ -284,6 +300,17 @@ tile_flip_px:	push	af
 		sub	b
 		cp	24
 		jp	nc,gx_tskip
+		ld	h,a
+		ld	a,(gx_fresh)
+		or	a
+		jp	z,gx_tf1
+		ld	a,h
+		cp	5
+		sbc	a,a
+		cpl
+		and	1
+gx_tf1:		ld	(gx_sk),a
+		ld	a,h
 		add	a,a
 		add	a,a
 		add	a,a
@@ -306,7 +333,12 @@ gx_tfp:		push	de
 		ld	(gx_vv),a
 		sbc	a,a
 		ld	(gx_m),a
-		ld	b,8
+		or	a
+		jp	nz,gx_tfd
+		ld	a,(gx_sk)
+		or	a
+		jp	nz,gx_tfs
+gx_tfd:		ld	b,8
 gx_tfx:		ld	a,(gx_m)
 		and	(hl)
 		ld	(de),a
@@ -314,7 +346,7 @@ gx_tfx:		ld	a,(gx_m)
 		inc	e
 		dec	b
 		jp	nz,gx_tfx
-		pop	hl
+gx_tfs:		pop	hl
 		pop	de
 		ld	a,d
 		add	a,0x20
@@ -341,6 +373,15 @@ tile_dbl_px:	push	af
 		ld	a,b
 		cp	23
 		jp	nc,gx_tskip
+		ld	a,(gx_fresh)
+		or	a
+		jp	z,gx_td1
+		ld	a,b
+		cp	5
+		sbc	a,a
+		cpl
+		and	1
+gx_td1:		ld	(gx_sk),a
 		ld	a,(gx_ta)
 		ld	l,a
 		ld	h,0
@@ -370,7 +411,12 @@ gx_tdp:		push	de
 		ld	(gx_vv),a
 		sbc	a,a
 		ld	(gx_m),a
-		ld	b,8
+		or	a
+		jp	nz,gx_tdd
+		ld	a,(gx_sk)
+		or	a
+		jp	nz,gx_tds
+gx_tdd:		ld	b,8
 gx_tdx:		ld	a,(gx_m)
 		and	(hl)
 		ld	(de),a
@@ -380,7 +426,7 @@ gx_tdx:		ld	a,(gx_m)
 		inc	hl
 		dec	b
 		jp	nz,gx_tdx
-		pop	hl
+gx_tds:		pop	hl
 		pop	de
 		ld	a,d
 		add	a,0x20

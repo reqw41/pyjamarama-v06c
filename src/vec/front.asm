@@ -25,7 +25,7 @@ title_return:	ld	sp,STACK_TOP
 		ld	hl,Bmp_Tiles		; база тайлов шрифта (в образе — ZX-адрес)
 		ld	(TileStartPtr),hl
 		ld	hl,StrAnyKey		; «PRESS A KEY TO CONTINUE» одинарным шрифтом
-		ld	de,0x1704
+		ld	de,TITLE_DE		; строка 23, колонка по языку (lang.inc)
 		ld	c,0x46
 		call	FurnitureDraw
 		ld	hl,title_v_zx0		; карта цветов ячеек -> ATTR (поверх атрибутов надписи; игре на заставке карта не нужна: Game_Start её перезаполняет)
