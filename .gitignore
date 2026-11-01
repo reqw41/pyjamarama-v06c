@@ -1,0 +1,12 @@
+# сборка и промежуточные файлы
+build/
+rom/
+*.bak
+__pycache__/
+.DS_Store
+# чужие материалы: ленты, снимки, зеркало luny/SkoolKit, ПЗУ Spectrum, кадры видео — не в репозиторий (см. README: где их взять)
+src_orig/
+ref/
+# сборки с вшитым ПЗУ/снимком ZX
+zx_pyjamarama.html
+art/logo_editor.html

@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Редактор логотипа Pyjamarama</title>
+<style>
+  :root{color-scheme:dark;--bg:#16181d;--pn:#20232b;--ln:#343846;--tx:#e6e8ee;--mu:#9aa1b2;--ac:#6ea8ff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,sans-serif}
+  header{padding:12px 16px;border-bottom:1px solid var(--ln);display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  h1{font-size:16px;margin:0}
+  .tabs button{background:var(--pn);color:var(--tx);border:1px solid var(--ln);padding:6px 14px;cursor:pointer}
+  .tabs button.on{background:var(--ac);color:#04122b;border-color:var(--ac)}
+  .tabs button:first-child{border-radius:6px 0 0 6px}.tabs button:last-child{border-radius:0 6px 6px 0}
+  main{display:grid;grid-template-columns:230px 1fr;gap:12px;padding:12px 16px}
+  @media(max-width:900px){main{grid-template-columns:1fr}}
+  aside{background:var(--pn);border:1px solid var(--ln);border-radius:8px;padding:12px;align-self:start}
+  aside h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);margin:12px 0 6px}
+  aside h2:first-child{margin-top:0}
+  .tools{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  button.t,button.a{background:#2a2e39;color:var(--tx);border:1px solid var(--ln);border-radius:6px;padding:6px 4px;cursor:pointer;font:inherit}
+  button.t.on{background:var(--ac);color:#04122b;border-color:var(--ac)}
+  button.a:hover,button.t:hover{border-color:var(--ac)}
+  .pal{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .sw{height:34px;border-radius:6px;border:2px solid transparent;cursor:pointer;position:relative}
+  .sw.on{border-color:#fff;outline:2px solid var(--ac)}
+  .sw span{position:absolute;left:3px;bottom:1px;font-size:10px;color:#000;mix-blend-mode:difference;filter:invert(1)}
+  label.c{display:flex;gap:6px;align-items:center;margin:4px 0;color:var(--tx)}
+  .stat{font-size:13px;color:var(--mu);line-height:1.6}
+  .stat b{color:var(--tx)}
+  .warn{color:#ffb86b}.bad{color:#ff7b7b}.ok{color:#7ee787}
+  .stage{background:var(--pn);border:1px solid var(--ln);border-radius:8px;padding:10px;overflow:auto}
+  canvas{display:block;image-rendering:pixelated;cursor:crosshair;background:#000}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center}
+  .hint{color:var(--mu);font-size:12px;margin-top:8px}
+  kbd{background:#2a2e39;border:1px solid var(--ln);border-radius:4px;padding:0 5px;font:12px monospace}
+  select{background:#2a2e39;color:var(--tx);border:1px solid var(--ln);border-radius:6px;padding:4px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Редактор логотипа «Pyjamarama!»</h1>
+  <div class="tabs"><button id="tabT" class="on">Заставка (256×64)</button><button id="tabG">Игра, нижняя полоса (256×32)</button></div>
+  <span class="hint" style="margin:0">Файлы для сборки: <code>art/logo_title.png</code>, <code>art/logo_game.png</code> → <code>sh tools/rebuild.sh</code></span>
+</header>
+<main>
+<aside>
+  <h2>Инструмент</h2>
+  <div class="tools">
+    <button class="t on" data-t="pen" title="P">✎ Карандаш</button>
+    <button class="t" data-t="erase" title="E">⌫ Ластик</button>
+    <button class="t" data-t="line" title="L">／ Линия</button>
+    <button class="t" data-t="rect" title="R">▭ Рамка</button>
+    <button class="t" data-t="fill" title="F">◧ Заливка</button>
+    <button class="t" data-t="pick" title="I">⌖ Пипетка</button>
+  </div>
+  <h2>Цвет (<span id="palName"></span>)</h2>
+  <div class="pal" id="pal"></div>
+  <h2>Вид</h2>
+  <label class="c"><input type="checkbox" id="optGrid" checked> сетка ячеек 8×8 <kbd>G</kbd></label>
+  <label class="c"><input type="checkbox" id="optMix" checked> подсвечивать ячейки с исключениями</label>
+  <label class="c"><input type="checkbox" id="optRes"> как будет в игре <kbd>V</kbd></label>
+  <div class="row" style="margin-top:6px">Масштаб <select id="zoom"><option>3</option><option selected>4</option><option>5</option><option>6</option></select></div>
+  <h2>Правка</h2>
+  <div class="row"><button class="a" id="undo">↶ Отмена</button><button class="a" id="redo">↷ Повтор</button></div>
+  <div class="row"><button class="a" id="clear">Очистить</button><button class="a" id="reset">Исходный</button></div>
+  <div class="hint">Стрелки — сдвиг рисунка на 1 px (<kbd>Shift</kbd> — на 8).</div>
+  <h2>Файлы</h2>
+  <div class="row"><button class="a" id="load">Открыть PNG…</button><button class="a" id="dl">Скачать PNG</button></div>
+  <div class="row"><button class="a" id="saveDir" title="Chrome/Edge: выберите папку art — оба PNG запишутся напрямую">Сохранить в папку art…</button></div>
+  <input type="file" id="file" accept="image/png,image/*" hidden>
+  <h2>Состояние</h2>
+  <div class="stat" id="stat"></div>
+</aside>
+<section>
+  <div class="stage"><canvas id="cv"></canvas></div>
+  <div class="hint" id="help"></div>
+</section>
+</main>
+<script>
+"use strict";
+const ART=/*ART*/{};
+// ---- палитры ----
+const PALS={
+  title:{name:'ZX Spectrum',w:256,h:64,list:[['чёрный',0,0,0,0],['синий',0,0,205,1],['красный',205,0,0,2],['пурпурный',205,0,205,3],['зелёный',0,205,0,4],['циан',0,205,205,5],['жёлтый',205,205,0,6]]},
+  game:{name:'игра, PICO-8',w:256,h:32,list:[['жёлтый',255,236,39,1],['красный',255,0,77,2],['голубой',41,173,255,3],['зелёный',0,228,54,4],['фиолетовый',182,109,255,5],['оранжевый',255,182,0,6],['коричневый',219,146,85,7]]}
+};
+const S={mode:'title',tool:'pen',color:1,scale:4,grid:true,mix:true,res:false,
+  d:{title:new Uint8Array(256*64),game:new Uint8Array(256*32)},undo:{title:[],game:[]},redo:{title:[],game:[]},orig:{title:null,game:null}};
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const el=id=>document.getElementById(id);
+// ---- вспомогательное ----
+const P=()=>PALS[S.mode];
+const rgbOf=i=>{const e=P().list[i-1];return [e[1],e[2],e[3]]};
+function nearest(r,g,b){let best=1,bd=1e9;P().list.forEach((e,k)=>{const d=(e[1]-r)**2+(e[2]-g)**2+(e[3]-b)**2;if(d<bd){bd=d;best=k+1}});return best}
+function classify(r,g,b,a){ if(a<128||(r>=235&&g>=235&&b>=235)) return 0; if(S.mode==='game'&&Math.max(r,g,b)<70) return 0; return nearest(r,g,b)}
+const view=()=>S.mode==='title'?{w:256,h:96,y0:96,ox:0,oy:24}:{w:256,h:32,y0:0,ox:0,oy:0};  // title: показываем экран y=96..191; холст логотипа = y 120..183 (oy = 24 строки вида)
+let ctxImg=null;
+// ---- история ----
+function push(){const u=S.undo[S.mode];u.push(S.d[S.mode].slice());if(u.length>100)u.shift();S.redo[S.mode].length=0}
+function undo(){const u=S.undo[S.mode];if(!u.length)return;S.redo[S.mode].push(S.d[S.mode].slice());S.d[S.mode]=u.pop();draw()}
+function redo(){const r=S.redo[S.mode];if(!r.length)return;S.undo[S.mode].push(S.d[S.mode].slice());S.d[S.mode]=r.pop();draw()}
+// ---- расчёт «как будет» ----
+function resolveCells(){  // title: ячейки 8x8 (на экране: y=120+..): цвет ячейки — преобладающий, остальные пиксели — «исключения»; game: цвет попиксельный (смешивания нет)
+  const d=S.d[S.mode],w=P().w,h=P().h,res=new Map(),mixed=new Set();
+  const cellOf=S.mode==='title'?(x,y)=>((y+120)>>3)*32+(x>>3):(x,y)=>x>>3;
+  const tally=new Map();
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const c=d[y*w+x];if(!c)continue;const k=cellOf(x,y);let t=tally.get(k);if(!t){t={};tally.set(k,t)}t[c]=(t[c]||0)+1}
+  let exc=0;tally.forEach((t,k)=>{let b=0,bn=-1,n=0,tot=0;for(const c in t){n++;tot+=t[c];if(t[c]>bn){bn=t[c];b=+c}}res.set(k,b);if(n>1&&S.mode==='title'){mixed.add(k);exc+=tot-bn}});
+  return {res,mixed,cellOf,exc};
+}
+// ---- отрисовка ----
+function draw(){
+  const v=view(),sc=S.scale;cv.width=v.w*sc;cv.height=v.h*sc;
+  ctx.imageSmoothingEnabled=false;
+  if(S.mode==='title'){ if(ctxImg) ctx.drawImage(ctxImg,0,v.y0,256,v.h,0,0,cv.width,cv.height); else {ctx.fillStyle='#bbb';ctx.fillRect(0,0,cv.width,cv.height)}
+    ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(0,0,cv.width,24*sc);ctx.fillRect(0,(24+64)*sc,cv.width,8*sc);   // вне холста логотипа (y<120 и y>=184)
+  } else {ctx.fillStyle='#242455';ctx.fillRect(0,0,cv.width,cv.height)}
+  const d=S.d[S.mode],w=P().w,h=P().h,R=S.res?resolveCells():null;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){let c=d[y*w+x];if(!c)continue;
+    if(R&&S.mode==='title'){c=R.res.get(R.cellOf(x,y))}
+    const [r,g,b]=rgbOf(c);ctx.fillStyle=`rgb(${r},${g},${b})`;ctx.fillRect(x*sc,(y+v.oy)*sc,sc,sc)}
+  if(S.grid){ctx.lineWidth=1;ctx.strokeStyle='rgba(128,128,128,.55)';ctx.beginPath();
+    for(let x=0;x<=256;x+=8){ctx.moveTo(x*sc+.5,0);ctx.lineTo(x*sc+.5,cv.height)}
+    const gy=S.mode==='title'?[...Array(13).keys()].map(k=>(96+8*k)):[0,8,16,24,32];
+    gy.forEach(y=>{const yy=(y-v.y0)*sc+.5;ctx.moveTo(0,yy);ctx.lineTo(cv.width,yy)});ctx.stroke()}
+  if(S.mix){const M=resolveCells();ctx.strokeStyle='#ff4d4d';ctx.lineWidth=2;
+    M.mixed.forEach(k=>{ if(S.mode==='title'){const cy=(k>>5),cx=k&31;ctx.strokeRect(cx*8*sc+1,(cy*8-v.y0)*sc+1,8*sc-2,8*sc-2)}else{ctx.strokeRect(k*8*sc+1,1,8*sc-2,cv.height-2)} })}
+  if(S.mode==='title'){ctx.strokeStyle='rgba(110,168,255,.9)';ctx.lineWidth=1;ctx.strokeRect(.5,24*sc+.5,cv.width-1,64*sc-1)}
+  stats();
+}
+function stats(){
+  const d=S.d[S.mode],w=P().w,h=P().h,M=resolveCells();let n=0,minx=1e9,maxx=-1,miny=1e9,maxy=-1;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(d[y*w+x]){n++;if(x<minx)minx=x;if(x>maxx)maxx=x;if(y<miny)miny=y;if(y>maxy)maxy=y}
+  let html=`чернильных пикселей: <b>${n}</b><br>`;
+  if(S.mode==='title') html+=M.mixed.size?`ячеек с разными цветами: <b>${M.mixed.size}</b>; пикселей-<b>исключений</b>: <b class="${M.exc>255?'bad':M.exc>120?'warn':'ok'}">${M.exc}</b> из 255 (4 Б каждый)<br>`:`<span class="ok">исключений нет</span><br>`;
+  if(S.mode==='game'&&n){const c0=minx>>3,c1=maxx>>3,cols=c1-c0+1,rows=maxy-miny+1,bytes=cols*rows;
+    html+=`колонки <b>${c0}..${c1}</b> (${cols}), строки <b>${miny}..${maxy}</b> (${rows})<br>до сжатия: <b>${bytes*3} Б</b> (3 плоскости; в образе ≈ 0,25–0,4 от этого, сейчас ≈360 Б). Цвет — попиксельно<br>`}
+  if(S.mode==='title'&&n){const oob=0;html+=`холст: левый верх = экран (0,120)`}
+  el('stat').innerHTML=html;
+}
+// ---- ввод ----
+function pos(e){const r=cv.getBoundingClientRect(),v=view(),sc=S.scale;return {x:Math.floor((e.clientX-r.left)/(r.width/cv.width*sc)),y:Math.floor((e.clientY-r.top)/(r.height/cv.height*sc))-v.oy}}
+const inb=(x,y)=>x>=0&&y>=0&&x<P().w&&y<P().h;
+function put(x,y,c){if(inb(x,y))S.d[S.mode][y*P().w+x]=c}
+function line(x0,y0,x1,y1,c){const dx=Math.abs(x1-x0),dy=-Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let e=dx+dy;for(;;){put(x0,y0,c);if(x0===x1&&y0===y1)break;const e2=2*e;if(e2>=dy){e+=dy;x0+=sx}if(e2<=dx){e+=dx;y0+=sy}}}
+function fill(x,y,c){if(!inb(x,y))return;const d=S.d[S.mode],w=P().w,h=P().h,t=d[y*w+x];if(t===c)return;const st=[[x,y]];while(st.length){const [a,b]=st.pop();if(a<0||b<0||a>=w||b>=h||d[b*w+a]!==t)continue;d[b*w+a]=c;st.push([a+1,b],[a-1,b],[a,b+1],[a,b-1])}}
+let drag=null,base=null;
+cv.addEventListener('mousedown',e=>{const p=pos(e);if(!inb(p.x,p.y)&&S.tool!=='pick')return;
+  if(S.tool==='pick'){const c=inb(p.x,p.y)?S.d[S.mode][p.y*P().w+p.x]:0;if(c){setColor(c);setTool('pen')}return}
+  push();const c=(S.tool==='erase'||e.button===2)?0:S.color;
+  if(S.tool==='fill'){fill(p.x,p.y,c);draw();return}
+  drag={x0:p.x,y0:p.y,c};base=S.d[S.mode].slice();
+  if(S.tool==='pen'||S.tool==='erase'){put(p.x,p.y,c);draw()}});
+addEventListener('mousemove',e=>{if(!drag)return;const p=pos(e);
+  if(S.tool==='pen'||S.tool==='erase'){line(drag.x0,drag.y0,p.x,p.y,drag.c);drag.x0=p.x;drag.y0=p.y}
+  else{S.d[S.mode]=base.slice();if(S.tool==='line')line(drag.x0,drag.y0,p.x,p.y,drag.c);else if(S.tool==='rect'){line(drag.x0,drag.y0,p.x,drag.y0,drag.c);line(p.x,drag.y0,p.x,p.y,drag.c);line(p.x,p.y,drag.x0,p.y,drag.c);line(drag.x0,p.y,drag.x0,drag.y0,drag.c)}}
+  draw()});
+addEventListener('mouseup',()=>{drag=null});
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+function shift(dx,dy){push();const d=S.d[S.mode],w=P().w,h=P().h,n=new Uint8Array(w*h);for(let y=0;y<h;y++)for(let x=0;x<w;x++){const nx=x+dx,ny=y+dy;if(nx>=0&&ny>=0&&nx<w&&ny<h)n[ny*w+nx]=d[y*w+x]}S.d[S.mode]=n;draw()}
+addEventListener('keydown',e=>{if(e.target.tagName==='SELECT')return;const k=e.key.toLowerCase();
+  if((e.ctrlKey||e.metaKey)&&k==='z'){e.shiftKey?redo():undo();e.preventDefault();return}
+  if((e.ctrlKey||e.metaKey)&&k==='y'){redo();e.preventDefault();return}
+  const T={p:'pen',e:'erase',l:'line',r:'rect',f:'fill',i:'pick'};if(T[k]&&!e.ctrlKey&&!e.metaKey){setTool(T[k]);return}
+  if(k==='g'){el('optGrid').click();return} if(k==='v'){el('optRes').click();return}
+  if(/^[1-7]$/.test(k)){const i=+k;if(i<=P().list.length)setColor(i);return}
+  const st=e.shiftKey?8:1,A={arrowleft:[-st,0],arrowright:[st,0],arrowup:[0,-st],arrowdown:[0,st]}[k];if(A){shift(...A);e.preventDefault()}});
+// ---- панель ----
+function setTool(t){S.tool=t;document.querySelectorAll('button.t').forEach(b=>b.classList.toggle('on',b.dataset.t===t))}
+function setColor(c){S.color=c;document.querySelectorAll('.sw').forEach(s=>s.classList.toggle('on',+s.dataset.c===c))}
+function buildPal(){const p=el('pal');p.innerHTML='';el('palName').textContent=P().name;
+  P().list.forEach((e,k)=>{const s=document.createElement('div');s.className='sw';s.dataset.c=k+1;s.style.background=`rgb(${e[1]},${e[2]},${e[3]})`;s.title=`${e[0]} (${k+1})`;s.innerHTML=`<span>${k+1}</span>`;s.onclick=()=>setColor(k+1);p.appendChild(s)});
+  if(S.color>P().list.length)S.color=1;setColor(S.color)}
+function setMode(m){S.mode=m;el('tabT').classList.toggle('on',m==='title');el('tabG').classList.toggle('on',m==='game');buildPal();
+  el('help').innerHTML=m==='title'?'Заставка: холст 256×64 = экран, строки 120..183 (рамка). Цвет ячейки 8×8 — преобладающий, пиксели другого цвета хранятся как «исключения» (до 255, по 4 байта): красная рамка — ячейка с исключениями. Фон показан для ориентира, в файл не попадает.'
+   :'Игра: полоса 256×32 под игровым полем. Цвет — ПОПИКСЕЛЬНО (любой из 7 цветов в любом пикселе). Чем меньше рисунок (колонки×строки) и чем проще, тем меньше памяти.';draw()}
+el('tabT').onclick=()=>setMode('title');el('tabG').onclick=()=>setMode('game');
+document.querySelectorAll('button.t').forEach(b=>b.onclick=()=>setTool(b.dataset.t));
+el('optGrid').onchange=e=>{S.grid=e.target.checked;draw()};el('optMix').onchange=e=>{S.mix=e.target.checked;draw()};el('optRes').onchange=e=>{S.res=e.target.checked;draw()};
+el('zoom').onchange=e=>{S.scale=+e.target.value;draw()};
+el('undo').onclick=undo;el('redo').onclick=redo;
+el('clear').onclick=()=>{push();S.d[S.mode].fill(0);draw()};
+el('reset').onclick=()=>{if(S.orig[S.mode]){push();S.d[S.mode]=S.orig[S.mode].slice();draw()}};
+// ---- файлы ----
+function imgToData(img,mode){const w=PALS[mode].w,h=PALS[mode].h,c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.drawImage(img,0,0);
+  const px=x.getImageData(0,0,w,h).data,m=S.mode;S.mode=mode;const d=new Uint8Array(w*h);for(let i=0;i<w*h;i++)d[i]=classify(px[i*4],px[i*4+1],px[i*4+2],px[i*4+3]);S.mode=m;return d}
+function dataToCanvas(mode){const w=PALS[mode].w,h=PALS[mode].h,c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d'),im=x.createImageData(w,h),d=S.d[mode];
+  for(let i=0;i<w*h;i++){const k=d[i];if(!k)continue;const e=PALS[mode].list[k-1];im.data[i*4]=e[1];im.data[i*4+1]=e[2];im.data[i*4+2]=e[3];im.data[i*4+3]=255}x.putImageData(im,0,0);return c}
+const NAMES={title:'logo_title.png',game:'logo_game.png'};
+el('load').onclick=()=>el('file').click();
+el('file').onchange=e=>{const f=e.target.files[0];if(!f)return;const img=new Image();img.onload=()=>{if(img.width!==P().w||img.height!==P().h){alert(`Нужен размер ${P().w}×${P().h}, а в файле ${img.width}×${img.height}`);return}push();S.d[S.mode]=imgToData(img,S.mode);draw()};img.src=URL.createObjectURL(f);e.target.value=''};
+addEventListener('dragover',e=>e.preventDefault());addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f){const img=new Image();img.onload=()=>{if(img.width!==P().w||img.height!==P().h){alert(`Нужен размер ${P().w}×${P().h}`);return}push();S.d[S.mode]=imgToData(img,S.mode);draw()};img.src=URL.createObjectURL(f)}});
+el('dl').onclick=()=>{dataToCanvas(S.mode).toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=NAMES[S.mode];a.click()})};
+el('saveDir').onclick=async()=>{ if(!window.showDirectoryPicker){alert('Браузер не умеет писать в папку (нужен Chrome/Edge). Используйте «Скачать PNG» и положите файлы в art/.');return}
+  try{const dir=await window.showDirectoryPicker({mode:'readwrite'});
+    for(const m of ['title','game']){const blob=await new Promise(r=>dataToCanvas(m).toBlob(r));const fh=await dir.getFileHandle(NAMES[m],{create:true});const w=await fh.createWritable();await w.write(blob);await w.close()}
+    alert('Записано: logo_title.png и logo_game.png. Теперь: sh tools/rebuild.sh')}catch(err){if(err.name!=='AbortError')alert('Не удалось записать: '+err.message)}};
+// ---- старт ----
+function loadSrc(src){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=src})}
+(async()=>{
+  const [t,g,c]=await Promise.all([loadSrc(ART.title||''),loadSrc(ART.game||''),loadSrc(ART.context||'')]);
+  if(t)S.d.title=imgToData(t,'title');if(g)S.d.game=imgToData(g,'game');if(c)ctxImg=c;
+  S.orig.title=S.d.title.slice();S.orig.game=S.d.game.slice();
+  setMode(location.hash==='#game'?'game':'title');
+})();
+</script>
+</body>
+</html>

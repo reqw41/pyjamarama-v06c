@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pyjamarama (ZX Spectrum 48K, V1) — оригинал</title>
+<style>
+  :root{color-scheme:dark}
+  body{margin:0;background:#16181d;color:#e6e8ee;font:14px/1.5 system-ui,sans-serif;display:flex;flex-direction:column;align-items:center}
+  header{padding:10px 16px;text-align:center}
+  h1{font-size:15px;margin:0 0 4px}
+  canvas{image-rendering:pixelated;width:960px;max-width:100vw;background:#000;border:1px solid #343846;cursor:pointer}
+  .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:8px;color:#9aa1b2;font-size:13px}
+  button{background:#2a2e39;color:#e6e8ee;border:1px solid #343846;border-radius:6px;padding:5px 12px;cursor:pointer;font:inherit}
+  kbd{background:#2a2e39;border:1px solid #343846;border-radius:4px;padding:0 5px;font:12px monospace}
+</style>
+</head>
+<body>
+<header><h1>Pyjamarama — оригинал ZX Spectrum 48K (редакция V1), эмуляция на JavaScript</h1>
+<div class="row"><span>Заставка: любая клавиша (удерживайте ≈0,3 с — музыка опрашивает клавиши между нотами) → меню → <kbd>Enter</kbd> — старт игры. В игре: <kbd>O</kbd>/<kbd>P</kbd> или <kbd>←</kbd>/<kbd>→</kbd> — влево/вправо, <kbd>M</kbd> или <kbd>↑</kbd> — прыжок</span></div></header>
+<canvas id="cv" width="320" height="240"></canvas>
+<div class="row"><button id="snd">Звук: выкл</button><button id="rst">Перезапуск</button><button id="spd">Скорость: 1×</button><span id="fps"></span></div>
+<script>
+/*Z80*/
+</script>
+<script>
+"use strict";
+const ROM64="/*ROM*/", RAM64="/*RAM*/";
+const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const T_FRAME=69888, INT_LEN=32;
+const ROWS=['^ZXCV','ASDFG','QWERT','12345','09876','POIUY','nLKJH',' sMNB'];
+const KEYS={};ROWS.forEach((r,i)=>[...r].forEach((ch,b)=>{KEYS[ch]=[i,b]}));
+class ZX{
+  constructor(){this.mem=new Uint8Array(0x10000);this.kb=new Uint8Array(8).fill(0x1f);this.border=0;this.beeper=0;this.edges=[];this.reset()}
+  reset(){
+    this.mem.fill(0);this.mem.set(b64(ROM64),0);this.mem.set(b64(RAM64),0x4000);
+    this.t=0;this.intLine=true;this.edges=[];
+    const s=this;
+    this.cpu=new Z80({mem_read:a=>s.mem[a],mem_write:(a,v)=>{if(a>=0x4000)s.mem[a]=v&255},
+      io_read:p=>{p&=0xffff;if(p&1)return 0xff;const hi=p>>8;let v=0x1f;for(let r=0;r<8;r++)if(!(hi&(1<<r)))v&=s.kb[r];return v|0xe0},
+      io_write:(p,v)=>{if((p&1)===0){s.border=v&7;const b=(v>>4)&1;if(b!==s.beeper){s.beeper=b;s.edges.push([s.t,b])}}}});
+    this.cpu.set_imode(1);this.cpu.set_sp(0);this.cpu.set_pc(0xB2CE);   // Main_Title: заставка -> меню -> игра (снимок уже расшифрован, Main FC97 с расшифровкой не нужен)
+  }
+  frame(){
+    const cpu=this.cpu;
+    while(this.t<T_FRAME){
+      let c;
+      if(this.intLine&&this.t<INT_LEN&&cpu.get_iff1()){this.intLine=false;cpu.interrupt(false,0xff);c=13}
+      else c=cpu.run_instruction();
+      this.t+=c;if(this.t>=INT_LEN)this.intLine=false;
+    }
+    this.t-=T_FRAME;this.intLine=true;
+  }
+  key(name,down){const k=KEYS[name];if(!k)return;if(down)this.kb[k[0]]&=~(1<<k[1]);else this.kb[k[0]]|=1<<k[1]}
+}
+const zx=new ZX();
+// ---- экран ----
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),img=ctx.createImageData(320,240),px=new Uint32Array(img.data.buffer);
+const NORM=[0,0xCD0000,0x0000CD,0xCD00CD,0x00CD00,0xCDCD00,0x00CDCD,0xCDCDCD],BRIGHT=[0,0xFF0000,0x0000FF,0xFF00FF,0x00FF00,0xFFFF00,0x00FFFF,0xFFFFFF];
+const col=(i,b)=>0xFF000000|(b?BRIGHT:NORM)[i];   // little-endian ABGR: значения выше заданы как 0xBBGGRR
+function render(){
+  const m=zx.mem,bc=col(zx.border,0);let flash=(Date.now()>>8)&1;
+  px.fill(bc);
+  for(let y=0;y<192;y++){const ya=0x4000|((y&0xc0)<<5)|((y&7)<<8)|((y&0x38)<<2);
+    for(let xc=0;xc<32;xc++){const at=m[0x5800+(y>>3)*32+xc],b=m[ya+xc];let ink=at&7,pap=(at>>3)&7;const br=(at>>6)&1;if((at&0x80)&&flash){const t=ink;ink=pap;pap=t}
+      const ci=col(ink,br),cp=col(pap,br),o=(y+24)*320+xc*8+32;
+      for(let i=0;i<8;i++)px[o+i]=(b>>(7-i))&1?ci:cp}}
+  ctx.putImageData(img,0,0);
+}
+// ---- звук (бипер) ----
+let ac=null,node=null,soundOn=false,queue=[],qpos=0;
+function startAudio(){ if(ac)return; ac=new (window.AudioContext||window.webkitAudioContext)();
+  node=ac.createScriptProcessor(1024,0,1);node.onaudioprocess=e=>{const o=e.outputBuffer.getChannelData(0);for(let i=0;i<o.length;i++){if(!soundOn||!queue.length){o[i]=0;continue}o[i]=queue[0][qpos++];if(qpos>=queue[0].length){queue.shift();qpos=0}}};
+  node.connect(ac.destination)}
+function pushAudio(edges,lvl0){ if(!soundOn)return; const N=Math.round((ac?ac.sampleRate:44100)/50),buf=new Float32Array(N);let lvl=lvl0,ei=0;
+  for(let i=0;i<N;i++){const t=i*T_FRAME/N;while(ei<edges.length&&edges[ei][0]<=t){lvl=edges[ei][1];ei++}buf[i]=lvl?0.18:-0.18}
+  if(queue.length<8)queue.push(buf)}
+// ---- клавиатура ----
+const MAP={Enter:['n'],' ':[' '],Shift:['^'],Control:['s'],Alt:['s'],ArrowLeft:['O'],ArrowRight:['P'],ArrowUp:['M'],ArrowDown:[' ']};
+function names(e){let k=e.key;if(MAP[k])return MAP[k];if(k.length===1){const u=k.toUpperCase();if(KEYS[u]&&u!=='N'&&u!=='S')return [u];if(u==='N'||u==='S')return [u]}return []}
+function kd(e,d){const ns=names(e);if(!ns.length)return;ns.forEach(n=>zx.key(n==='N'?'N':n==='S'?'S':n,d));e.preventDefault()}
+KEYS.N=ROWS[7].indexOf('N')>=0?[7,3]:KEYS.N;   // N — буква (в ROWS ' sMNB': 'N' = [7,3])
+addEventListener('keydown',e=>{startAudioOnce();kd(e,true)});addEventListener('keyup',e=>kd(e,false));
+function startAudioOnce(){}
+document.getElementById('snd').onclick=e=>{soundOn=!soundOn;if(soundOn)startAudio();e.target.textContent='Звук: '+(soundOn?'вкл':'выкл')};
+document.getElementById('rst').onclick=()=>zx.reset();
+let speed=1;document.getElementById('spd').onclick=e=>{speed=speed===1?2:speed===2?4:1;e.target.textContent='Скорость: '+speed+'×'};
+// ---- цикл 50 Гц ----
+let last=performance.now(),acc=0,frames=0,fpsT=last;
+function loop(now){acc+=now-last;last=now;let n=0;
+  while(acc>=20&&n<8){for(let s=0;s<speed;s++){const lv=zx.beeper;zx.edges=[];zx.frame();if(s===speed-1){pushAudio(zx.edges,lv);}}acc-=20;n++;frames++}
+  if(acc>100)acc=0; if(n)render();
+  if(now-fpsT>1000){document.getElementById('fps').textContent=frames+' кадров/с';frames=0;fpsT=now}
+  requestAnimationFrame(loop)}
+render();requestAnimationFrame(loop);
+</script>
+</body>
+</html>
