@@ -16,7 +16,6 @@
 		INCLUDE	"flow.asm"
 		INCLUDE	"events_a.asm"
 		INCLUDE	"invaders.asm"
-		INCLUDE	"tcolor.asm"
 		INCLUDE	"dzx0.asm"
 		INCLUDE	"dlogo.asm"
 ; старт: пока сразу в игру (заставка и меню — во фронте, этап 4)
@@ -40,10 +39,13 @@ shift_tab:	INCBIN	"../../build/vec/shift.tab"
 LOW_END		EQU	$
 		ASSERT	LOW_END <= 0x7C00
 
-; Заставка нужна один раз при запуске: её сжатые данные лежат в плоскостях 1-2 (0xA000..), распаковываются в плоскость 0 и в ATTR, потом плоскости затирает colorize
-		ORG	0xA000
-title_zx0:	INCBIN	"../../build/vec/title.zx0"
-title_v_zx0:	INCBIN	"../../build/vec/title_v.zx0"
-		ASSERT	$ <= 0xE000
+; Заставка показывается один раз при запуске: три потока ZX0 (плоскости 0, 1, 2) лежат прямо в плоскости 2 (0xC000..0xDFFF), которую распаковка плоскости 2 затирает последней
+		ORG	0xC000
+tp_0:		INCBIN	"../../build/vec/tp_0.zx0"
+tp_1:		INCBIN	"../../build/vec/tp_1.zx0"
+		ORG	0xE000-TP2_LEN
+tp_2:		INCBIN	"../../build/vec/tp_2.zx0"
+		ASSERT	tp_1+TP1_LEN <= tp_2
+		ASSERT	tp_2+TP2_LEN == 0xE000
 
 		SAVEBIN	"../../build/vec/pyjama.r0m",0,0x10000

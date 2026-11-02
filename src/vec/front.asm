@@ -12,15 +12,20 @@ title_start:	ld	sp,STACK_TOP
 		ld	(bord_idx),a
 		ld	a,3
 		ld	(pal_load),a
-		ld	hl,title_zx0		; картинка прямо в плоскость 0
+		ld	hl,tp_0			; плоскость 0 (поток лежит в плоскости 2)
 		ld	bc,0x8000
 		call	dzx0
-		ld	hl,title_v_zx0		; карта цветов ячеек -> ATTR (игре на заставке карта не нужна: Game_Start её перезаполняет)
-		ld	bc,ATTR
+		ld	hl,tp_1			; плоскость 1
+		ld	bc,0xA000
 		call	dzx0
-		call	clear_planes12		; источники лежали в плоскостях 1-2: чистим только после обеих распаковок
-		call	fill_strips		; верх и низ (линии вне картинки ZX) — белые
-		call	colorize
+		ld	hl,tp_2			; плоскость 2: поток лежит в конце неё же — распаковка «на месте» (вывод всегда не меньше ввода)
+		ld	bc,0xC000
+		call	dzx0
+		ld	hl,0xE000-TP_TRIM	; хвост плоскости 2 (полоса вне картинки) не сжат — 0xFF
+		ld	a,0xFF
+tt_fl:		ld	(hl),a
+		inc	l
+		jp	nz,tt_fl
 tt_up:		call	any_key			; ждать, пока всё отпущено
 		jp	nz,tt_up
 tt_w:		call	frame_wait
@@ -234,42 +239,53 @@ mt2:		ld	a,e
 		inc	e
 		jp	mt2
 
-; ---- мелодия (из второго издания): канал 1 ВИ53 (порт 0x0A, управляющее слово 0x76 на порт 0x08), ноты ходит ISR раз в кадр ----
-mus_start:	ld	hl,mus_score
-		ld	(mus_p),hl
-		ld	a,1
-		ld	(mus_cnt),a
+; ---- мелодия Олега Никитина (AY -> ВИ53, tools/mkmusic.py): канал 1 (порт 0x0A, слово 0x76) — мелодия, канал 2 (порт 0x09, слово 0xB6) — арпеджио аккордов; ноты ходит ISR раз в кадр ----
+mus_start:	ld	hl,mus_mel
+		ld	(m1_p),hl
+		ld	hl,mus_chd
+		ld	(m2_p),hl
+		xor	a
+		ld	(m1_c),a
+		ld	(m2_c),a
+		ld	(m2_last),a
+		inc	a
 		ld	(mus_on),a
 		ret
 mus_stop:	xor	a
 		ld	(mus_on),a
-		ld	a,0x70			; канал 1: режим 0 без счёта — тишина
+		ld	a,0x70			; режим 0 без счёта — тишина
+		out	(0x08),a
+		ld	a,0xB0
 		out	(0x08),a
 		ret
 mus_tick:	ld	a,(mus_on)
 		or	a
 		ret	z
-		ld	hl,mus_cnt
-		dec	(hl)
-		ret	nz
-		ld	hl,(mus_p)
+		ld	hl,m1_c			; ---- мелодия: пары (нота, кадров), 0 кадров — конец
+		ld	a,(hl)
+		or	a
+		jp	nz,mt1c
+		ld	hl,(m1_p)
+		ld	b,(hl)
+		inc	hl
 		ld	a,(hl)
 		inc	hl
 		or	a
-		jp	nz,mut1
-		ld	hl,mus_score		; конец — сначала
+		jp	nz,mt1s
+		ld	hl,mus_mel
+		ld	b,(hl)
+		inc	hl
 		ld	a,(hl)
 		inc	hl
-mut1:		ld	(mus_p),hl
-		ld	b,a
-		and	7
-		cp	7
-		jp	z,mut_p
-		add	a,a
-		ld	e,a
-		ld	d,0
-		ld	hl,mus_div-2
-		add	hl,de
+mt1s:		ld	(m1_p),hl
+		ld	(m1_c),a
+		ld	a,b
+		or	a
+		jp	nz,mt1n
+		ld	a,0x70
+		out	(0x08),a
+		jp	mt1c
+mt1n:		call	mus_div_hl
 		ld	a,0x76
 		out	(0x08),a
 		ld	a,(hl)
@@ -277,26 +293,105 @@ mut1:		ld	(mus_p),hl
 		inc	hl
 		ld	a,(hl)
 		out	(0x0A),a
+mt1c:		ld	hl,m1_c
+		dec	(hl)
+		ld	hl,m2_c			; ---- аккорды: тройки (длина | тип<<7, низ, середина | верх<<4), 0 — конец
+		ld	a,(hl)
+		or	a
+		jp	nz,mt2c
+		ld	hl,(m2_p)
+		ld	a,(hl)
+		or	a
+		jp	nz,mt2s
+		ld	hl,mus_chd
+		ld	a,(hl)
+mt2s:		inc	hl
+		ld	b,(hl)			; низ
+		inc	hl
+		ld	c,(hl)
+		inc	hl
+		ld	(m2_p),hl
+		ld	d,a
+		and	0x7F
+		ld	(m2_c),a
+		ld	a,d
+		rlca
+		and	1
+		add	a,5			; длина шаблона арпеджио: 5 или 6 кадров
+		ld	(m2_n),a
 		ld	a,b
+		ld	(c_low),a
+		ld	a,c
+		and	15
+		add	a,b
+		ld	(c_mid),a
+		ld	a,c
 		rrca
 		rrca
 		rrca
-		and	3
+		rrca
+		and	15
+		add	a,b
+		ld	(c_top),a
+		xor	a
+		ld	(m2_ph),a
+mt2c:		ld	hl,m2_c
+		dec	(hl)
+		ld	a,(m2_ph)		; нота кадра: шаблон верх, середина, низ, низ, середина[, верх]
 		ld	e,a
 		ld	d,0
-		ld	hl,mus_dur
+		ld	hl,mus_pat
 		add	hl,de
-		ld	a,(hl)
-		ld	(mus_cnt),a
-		ret
-mut_p:		ld	a,0x70
+		ld	e,(hl)
+		ld	hl,c_low
+		add	hl,de
+		ld	b,(hl)
+		ld	a,(m2_ph)
+		inc	a
+		ld	hl,m2_n
+		cp	(hl)
+		jp	c,mt2p
+		xor	a
+mt2p:		ld	(m2_ph),a
+		ld	a,(m2_last)		; та же нота — не трогать канал (иначе счётчик перезапускается)
+		cp	b
+		ret	z
+		ld	a,b
+		ld	(m2_last),a
+		or	a
+		jp	nz,mt2n
+		ld	a,0xB0
 		out	(0x08),a
-		ld	a,1
-		ld	(mus_cnt),a
 		ret
+mt2n:		call	mus_div_hl
+		ld	a,0xB6
+		out	(0x08),a
+		ld	a,(hl)
+		out	(0x09),a
+		inc	hl
+		ld	a,(hl)
+		out	(0x09),a
+		ret
+mus_div_hl:	dec	a			; A = нота 1..61 -> HL -> делитель
+		add	a,a
+		ld	e,a
+		ld	d,0
+		ld	hl,mus_div
+		add	hl,de
+		ret
+mus_pat:	db	2,1,0,0,1,2
 mus_on:		db	0
-mus_cnt:	db	0
-mus_p:		dw	0
+m1_c:		db	0
+m1_p:		dw	0
+m2_c:		db	0
+m2_p:		dw	0
+m2_ph:		db	0
+m2_n:		db	5
+m2_last:	db	0
+c_low:		db	0
+c_mid:		db	0
+c_top:		db	0
+		INCLUDE	"music_gen.inc"
 
 m_cur:		db	0
 m_prev:		db	0
