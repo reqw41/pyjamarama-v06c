@@ -7,8 +7,8 @@ const ROOT=path.join(__dirname,'..'),OUT=process.argv[2]||path.join(ROOT,'build/
 const A=+process.argv[3]||0,B=process.argv[4]!==undefined?+process.argv[4]:80;
 const sy={};for(const l of fs.readFileSync(path.join(ROOT,'build/vec/pyjama.sym'),'latin1').split('\n')){const x=/^(\S+):\s+EQU\s+0x([0-9A-Fa-f]+)/.exec(l);if(x)sy[x[1]]=parseInt(x[2],16);}
 const m=E.mk(path.join(ROOT,'build/vec/pyjama.r0m'));
-const press=(k,n)=>{const e={vk:[0,4]}[k];m.keyboard.matrix[e[0]]|=e[1];for(let i=0;i<n;i++)m.frame();m.keyboard.matrix[e[0]]&=~e[1];for(let i=0;i<20;i++)m.frame();};
-for(let i=0;i<150;i++)m.frame();press('vk',6);for(let i=0;i<30;i++)m.frame();press('vk',6);for(let i=0;i<120;i++)m.frame();
+const press=(k,n)=>{const e={vk:[0,4],zero:[2,1]}[k];m.keyboard.matrix[e[0]]|=e[1];for(let i=0;i<n;i++)m.frame();m.keyboard.matrix[e[0]]&=~e[1];for(let i=0;i<20;i++)m.frame();};
+for(let i=0;i<150;i++)m.frame();press('vk',6);for(let i=0;i<30;i++)m.frame();press('zero',6);for(let i=0;i<120;i++)m.frame();
 const cpu=m.cpu;
 function call(label){const sp0=cpu.sp,pc0=cpu.pc,SENT=0xFF00;
   const sv=[m.rd(SENT),m.rd(SENT+1),m.rd(SENT+2)];m.wr(SENT,0xC3);m.wr(SENT+1,SENT&255);m.wr(SENT+2,SENT>>8);   // jmp $ — «возврат» зависает, кадры доходят до конца

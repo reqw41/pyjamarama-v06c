@@ -25,7 +25,7 @@ const tab=[];for(let k=0;k<200;k++)tab.push(m.rd(sy.FurniturePtrTable+2*k)|m.rd(
 const out=[];
 for(let n=A;n<=B;n++){
   m.wr(sy.Wally_RoomNo,n);const log=[];
-  m.onInstr=pc=>{if(pc===sy.rd_fd){const R=cpu.regs,hl=R[4]<<8|R[5];const idx=tab.indexOf(hl);const st=[];for(let a=hl;st.length<60;a++){const b=m.rd(a);st.push(b);if(b===0xFF)break;}
+  m.onInstr=pc=>{if(pc===sy.rd_fd){const R=cpu.regs,hl=R[4]<<8|R[5];const idx=tab.indexOf(hl);const st=[];for(let a=hl;st.length<200;){const b=m.rd(a);st.push(b);a++;if(b===0xFF)break;if(b===0xFE||b===0xFB){st.push(m.rd(a++));if(b===0xFB)st.push(m.rd(a++));}else if(b===0xFC){st.push(m.rd(a++));st.push(m.rd(a++));}else if(b>=0x80){st.push(m.rd(a++));st.push(m.rd(a++));}}
     log.push({furn:idx,x:R[3],y:R[2],c:R[1],stream:st.map(b=>b.toString(16)).join(' ')});}};
   try{call('Room_Enter');}catch(e){}
   m.onInstr=null;out.push({room:n,items:log});

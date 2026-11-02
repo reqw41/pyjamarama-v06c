@@ -133,13 +133,94 @@ fd_base:	ld	a,(hl)
 		inc	hl
 		jp	FurnitureDraw
 fd_tile:	push	af
+		ld	a,c
+		ld	(fd_c0),a
+		and	7
+		push	hl
+		ld	hl,fd_m0
+		cp	(hl)
+		jp	z,fdm_a
+		ld	hl,fd_m1
+		cp	(hl)
+		jp	nz,fdm_n
+fdm_a:		inc	hl
+		ld	a,c
+		and	0xF8
+		or	(hl)
+		ld	c,a
+fdm_n:		pop	hl
 		ld	a,(fd_flip)
 		or	a
 		jp	nz,fdt_f
 		pop	af
-		jp	tile
+		call	tile
+		jp	fdm_r
 fdt_f:		pop	af
-		jp	tile_flip
+		call	tile_flip
+fdm_r:		ld	a,(fd_c0)
+		ld	c,a
+		ret
+fd_c0:		db	0
+fd_n:		db	0
+fd_m0:		db	0xFF,0			; активные замены чернил (из, в) для рисуемой мебели; 0xFF — нет
+fd_m1:		db	0xFF,0
+
+; fd_remap: по таблице rm_tab (комната | 0xFF — любая, мебель, чернила ZX из, в) ставит замены fd_m0/fd_m1 для мебели fd_n
+fd_remap:	push	hl
+		push	de
+		push	bc
+		ld	hl,rm_tab
+fr_l:		ld	a,(hl)
+		cp	0xFE
+		jp	z,fr_end
+		ld	b,a
+		inc	hl
+		ld	a,(fd_n)
+		cp	(hl)
+		jp	nz,fr_nx
+		ld	a,b
+		cp	0xFF
+		jp	z,fr_hit
+		ld	a,(Wally_RoomNo)
+		cp	b
+		jp	nz,fr_nx
+fr_hit:		inc	hl
+		ld	c,(hl)
+		inc	hl
+		ld	b,(hl)
+		inc	hl
+		ld	a,(fd_m0)
+		inc	a
+		jp	nz,fr_s1
+		ld	a,c
+		ld	(fd_m0),a
+		ld	a,b
+		ld	(fd_m0+1),a
+		jp	fr_l
+fr_s1:		ld	a,c
+		ld	(fd_m1),a
+		ld	a,b
+		ld	(fd_m1+1),a
+		jp	fr_l
+fr_nx:		inc	hl
+		inc	hl
+		inc	hl
+		jp	fr_l
+fr_end:		pop	bc
+		pop	de
+		pop	hl
+		ret
+; чернила ZX: 1 синий -> белый (код 1), 4 зелёный, 5 голубой, 6 жёлтый -> оранжевый (код 6), 7 белый -> светло-коричневый
+rm_tab:		db	0xFF,14,7,1		; ракета — белая
+		db	19,37,6,1		; шкафы в ванной — белые
+		db	19,38,6,1
+		db	0xFF,39,5,4		; цветы в кашпо — зелёные
+		db	0xFF,40,5,4
+		db	0xFF,16,4,6		; сундуки — оранжевые
+		db	0xFF,19,6,1		; паутина — белая
+		db	0xFF,20,6,1
+		db	0xFF,8,4,6		; спинки стульев — как ножки
+		db	0xFE
 
 ; ---- строка двойной высоты (HL, D, E, C) ----------------------------------------------------------------
 String_DrawDouble:
@@ -334,6 +415,7 @@ rd0:		ld	a,(hl)
 		inc	hl
 		ld	a,(hl)
 		inc	hl
+		ld	(fd_n),a
 		push	hl
 		push	de
 		ld	l,a			; C (цвет) не трогать: он переходит между предметами мебели
@@ -346,7 +428,11 @@ rd0:		ld	a,(hl)
 		ld	h,(hl)
 		ld	l,a
 		pop	de
-rd_fd:		call	FurnitureDraw
+rd_fd:		call	fd_remap		; перекраска отдельных предметов мебели (rm_tab)
+		call	FurnitureDraw
+		ld	a,0xFF
+		ld	(fd_m0),a
+		ld	(fd_m1),a
 		pop	hl
 		jp	rd0
 rd_f4:		ld	a,1
