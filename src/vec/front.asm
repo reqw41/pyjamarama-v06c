@@ -2,10 +2,10 @@
 ; Заставка — экран ZX с idpixel.ru (tools/mktitle.py): рисунок в плоскости 0 (ZX0) + карта цветов ячеек 8x8 (ink биты 0-2, paper биты 3-5, ZX0); colorize раскладывает рисунок по плоскостям.
 ; Меню: выбор управления (клавиатура / джойстик «П» включаются и выключаются) и старт игры; тексты — menu_txt.inc (tools/mkmenu.py).
 
-pal_title:	db	0x00,0x00, 0x38,0x38, 0x07,0x07, 0x3F,0x3F, 0xC0,0xC0, 0xF8,0xF8, 0xC7,0xC7, 0xFF,0xFF	; пары по индексу аппаратной палитры (порядок кодов 0,4,2,6,1,5,3,7), цвета ZX полной яркости: код = цвет ZX (0 чёрный, 1 синий, 2 красный, 3 пурпурный, 4 зелёный, 5 циан, 6 жёлтый, 7 белый)
 
 ; ---- заставка (только при запуске) ----
 title_start:	ld	sp,STACK_TOP
+		call	mus_start
 		ld	hl,pal_title
 		ld	(pal_ptr),hl
 		ld	a,14			; бордюр на заставке — белый (индекс 14 = код 7, плоскости 0..2)
@@ -26,10 +26,10 @@ tt_up:		call	any_key			; ждать, пока всё отпущено
 tt_w:		call	frame_wait
 		call	any_key
 		jp	z,tt_w
-		; дальше — меню
+		jp	menu_start
 
 ; ---- меню ----
-title_return:
+title_return:	call	mus_start		; после игры мелодия меню заново
 menu_start:	ld	sp,STACK_TOP
 		xor	a
 		ld	(inv_cheat),a
@@ -142,7 +142,8 @@ mnl_sel:		rrca
 mnl_s1:		ld	(in_mask),a
 		call	mn_redraw
 		jp	mnl_loop
-mn_go:		call	any_key			; старт: дождаться, пока отпустят кнопки (ВК не должен стать паузой)
+mn_go:		call	mus_stop
+		call	any_key			; старт: дождаться, пока отпустят кнопки (ВК не должен стать паузой)
 		jp	nz,mn_go
 		xor	a
 		ld	(paused),a
@@ -232,6 +233,70 @@ mt2:		ld	a,e
 		call	tile_px
 		inc	e
 		jp	mt2
+
+; ---- мелодия (из второго издания): канал 1 ВИ53 (порт 0x0A, управляющее слово 0x76 на порт 0x08), ноты ходит ISR раз в кадр ----
+mus_start:	ld	hl,mus_score
+		ld	(mus_p),hl
+		ld	a,1
+		ld	(mus_cnt),a
+		ld	(mus_on),a
+		ret
+mus_stop:	xor	a
+		ld	(mus_on),a
+		ld	a,0x70			; канал 1: режим 0 без счёта — тишина
+		out	(0x08),a
+		ret
+mus_tick:	ld	a,(mus_on)
+		or	a
+		ret	z
+		ld	hl,mus_cnt
+		dec	(hl)
+		ret	nz
+		ld	hl,(mus_p)
+		ld	a,(hl)
+		inc	hl
+		or	a
+		jp	nz,mut1
+		ld	hl,mus_score		; конец — сначала
+		ld	a,(hl)
+		inc	hl
+mut1:		ld	(mus_p),hl
+		ld	b,a
+		and	7
+		cp	7
+		jp	z,mut_p
+		add	a,a
+		ld	e,a
+		ld	d,0
+		ld	hl,mus_div-2
+		add	hl,de
+		ld	a,0x76
+		out	(0x08),a
+		ld	a,(hl)
+		out	(0x0A),a
+		inc	hl
+		ld	a,(hl)
+		out	(0x0A),a
+		ld	a,b
+		rrca
+		rrca
+		rrca
+		and	3
+		ld	e,a
+		ld	d,0
+		ld	hl,mus_dur
+		add	hl,de
+		ld	a,(hl)
+		ld	(mus_cnt),a
+		ret
+mut_p:		ld	a,0x70
+		out	(0x08),a
+		ld	a,1
+		ld	(mus_cnt),a
+		ret
+mus_on:		db	0
+mus_cnt:	db	0
+mus_p:		dw	0
 
 m_cur:		db	0
 m_prev:		db	0

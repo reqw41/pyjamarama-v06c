@@ -5,6 +5,8 @@
 		INCLUDE	"zxsym.inc"
 		INCLUDE	"layout.inc"
 		INCLUDE	"lang.inc"
+		ORG	Bmp_Tiles+72
+		INCLUDE	"hole.inc"
 		ORG	0x0000
 		INCLUDE	"hw.asm"
 		INCLUDE	"wally.asm"
@@ -35,7 +37,6 @@ shift_tab:	INCBIN	"../../build/vec/shift.tab"
 		INCLUDE	"bmp16_gen.inc"
 		INCLUDE	"front.asm"
 		INCLUDE	"logo2.asm"		; логотип игры (три плоскости ZX0) и исключения цвета логотипа заставки
-demo_zx0:	INCBIN	"../../build/vec/demo.zx0"	; запись ввода демо ZX (859 Б -> ZX0), пока демо не перенесено
 LOW_END		EQU	$
 		ASSERT	LOW_END <= 0x7C00
 

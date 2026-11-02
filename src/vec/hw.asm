@@ -92,6 +92,7 @@ isr_np:		ld	hl,FRAMES
 		ld	(paused),a
 isr_nv:
 		call	snd_poll_isr		; звук: продвинуть ноты (раз в кадр; в паузе игры — чаще)
+		call	mus_tick		; мелодия меню (канал 1)
 		pop	hl
 		pop	de
 		pop	bc

@@ -1,23 +1,19 @@
 #!/usr/bin/env python3
-"""Мелодия заставки: таблица нот ZX (BC=полупериод в итерациях Pause, DE=число периодов) -> делители канала 1 ВИ53 и длительности в кадрах (50 Гц) -> src/vec/music_gen.inc.
-Период ZX = 52*BC + 190 тактов @3,5 МГц; делитель ВИ53 (1,5 МГц) N = период*3/7. Партитуру (пары «повтор, нота», 0 = конец, FF = пауза) играет сам ZX-образ данных."""
-import re
-ram=open('build/v1/ram.bin','rb').read()
-def b(a): return ram[a-0x4000]
-sy={}
-for l in open('ref/pyjamarama.lst'):
-    m=re.match(r'([0-9A-F]{4})  (\S+)',l)
-    if m and re.match(r'[A-Za-z_]',m.group(2)): sy[m.group(2)]=int(m.group(1),16)
-nt=sy['Music_NoteTable']
-sc=sy['Music_ScoreSheet'];p=sc;mx=0
-while b(p)!=0:
-    n=b(p+1);p+=2
-    if n!=0xFF: mx=max(mx,n)
-div=[];fr=[]
-for i in range(1,mx+1):
-    a=nt+(i-1)*4;bc=b(a)|b(a+1)<<8;de=b(a+2)|b(a+3)<<8
-    T=52*bc+190
-    div.append(round(T*3/7));fr.append(max(1,round(de*T/3.5e6*50)))
-out="; сгенерировано tools/mkmusic.py (не править)\nmus_n_div:\tdw\t"+",".join(map(str,div))+"\nmus_n_fr:\tdb\t"+",".join(map(str,fr))+"\n"
+"""Мелодия меню — из второго издания (build/v2/ram.bin, TZX v2): партитура F6F7 — пары (длительность 1/2/4/8, нота), таблица нот F7AD (BC = полупериод, DE = число периодов), бипер.
+Период ZX T = 52*BC + 250 тактов @3,5 МГц; делитель канала 1 ВИ53 (1,5 МГц) = T*3/7; кадров на единицу длительности ≈ 3,3. Байт партитуры: бит 0-2 — нота (1..6, 7 — пауза), бит 3-4 — длительность (индекс 1/2/4/8), 0 — конец.
+Выход: src/vec/music_gen.inc (mus_score, mus_div, mus_dur)."""
+B=open('build/v2/ram.bin','rb').read()
+def b(a): return B[a-0x4000]
+a=0xF6F7;pairs=[]
+while b(a)!=0: pairs.append((b(a),b(a+1))); a+=2
+used=sorted({n for _,n in pairs if n}); assert len(used)==6,used
+code={n:i+1 for i,n in enumerate(used)}
+LEN={1:0,2:1,4:2,8:3}
+sc=[(7 if n==0 else code[n])|(LEN[l]<<3) for l,n in pairs]+[0]
+div=[]
+for n in used:
+    t=0xF7AD+4*n; bc=b(t)|b(t+1)<<8; T=52*bc+250; div.append(round(T*3/7))
+dur=[3,7,13,26]
+out="; сгенерировано tools/mkmusic.py (не править)\nmus_score:\tdb\t"+",".join(map(str,sc))+"\nmus_div:\tdw\t"+",".join(map(str,div))+"\nmus_dur:\tdb\t"+",".join(map(str,dur))+"\n"
 open('src/vec/music_gen.inc','w').write(out)
-print('нот',mx,'делители',div,'кадров',fr)
+print('нот в партитуре',len(pairs),'делители',div)
