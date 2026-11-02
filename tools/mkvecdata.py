@@ -39,16 +39,16 @@ for i,(a,lab,mn,ops) in enumerate(items):
 # --- перевод: новые строки — в виртуальную область [VBASE..), старые строки выбрасываются (уплотнение), таблицы указателей переопределяются при пересчёте ---
 OVR={}                                  # (адрес таблицы ZX, индекс) -> виртуальный адрес новой строки
 TITLE_DE=0x1704
+vcur=VBASE
+def place(data):
+    global vcur
+    a=vcur; img[a-LO:a-LO+len(data)]=data; cov[a-LO:a-LO+len(data)]=b'\x01'*len(data); vcur+=len(data); return a
+def drop(a):                         # старая строка: обнулить и вывести из образа
+    toks,n=i18n.parse(img,a-LO)
+    for k in range(n): img[a-LO+k]=0; cov[a-LO+k]=0
+    return toks
 if PJ_LANG!='en':
     T=i18n.load(PJ_LANG); CODE=T.CODE
-    vcur=VBASE
-    def place(data):
-        global vcur
-        a=vcur; img[a-LO:a-LO+len(data)]=data; cov[a-LO:a-LO+len(data)]=b'\x01'*len(data); vcur+=len(data); return a
-    def drop(a):                         # старая строка: обнулить и вывести из образа
-        toks,n=i18n.parse(img,a-LO)
-        for k in range(n): img[a-LO+k]=0; cov[a-LO+k]=0
-        return toks
     def tbl(nm,n): return labaddr[nm],n
     # 1) предметы (ObjectTextPtrTable, 28 штук)
     ot=labaddr['ObjectTextPtrTable']
@@ -70,7 +70,7 @@ if PJ_LANG!='en':
     i18n.patch_font(img,labaddr['Bmp_Tiles']-LO,T.GLYPHS,CODE)
     TITLE_DE=0x1700|T.TITLE_COL
 open('src/vec/lang.inc','w').write('TITLE_DE\tEQU\t0x%04X\n'%TITLE_DE)
-open('src/vec/objalt.inc','w').write('; сгенерировано tools/mkvecdata.py: OBJ_ALT — в русской версии у канистры, пистолета и ведра название зависит от состояния\n'+('OBJ_ALT\tEQU\t%d\nRM_ON\tEQU\t%d\t; перекраска мебели (rm_tab); в английской сборке для стендов (сверка с ZX) выключена\n'%((0,0) if PJ_LANG=='en' else (1,1))))
+open('src/vec/objalt.inc','w').write('; сгенерировано tools/mkvecdata.py: OBJ_ALT — в русской версии у канистры, пистолета и ведра название зависит от состояния\n'+('OBJ_ALT\tEQU\t%d\nHUD_L\tEQU\t%d\t; 1 — русская раскладка HUD (энергия и карманы на колонку левее, текст 13 знаков); 0 — как в ZX\nRM_ON\tEQU\t%d\t; перекраска мебели (rm_tab); PJ_STANDS=1 — выключена (стенды сверяют рисование с ZX)\n'%((0,0,0) if PJ_LANG=='en' and os.environ.get('PJ_STANDS') else ((0,0,1) if PJ_LANG=='en' else (1,1,1)))))
 # выброшено из образа: таблицы настройки клавиш и текст главного меню ZX (в порту управление фиксированное, меню нет)
 _names=sorted(labaddr.items(),key=lambda x:x[1])
 _dead_hi=lambda nm:next(a for l,a in _names if a>labaddr[nm])

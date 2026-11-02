@@ -468,7 +468,7 @@ gx_mf0:		ld	e,c
 		dec	b
 		jp	nz,gx_mf0
 		ret
-gx_milk_row_e:	ld	d,0x8C			; HL = 3 байта; каждый — в три плоскости (страницы +0, +0x20, +0x40)
+gx_milk_row_e:	ld	d,0x8D-HUD_L			; HL = 3 байта; каждый — в три плоскости (страницы +0, +0x20, +0x40)
 		ld	a,3
 		ld	(gx_mc),a
 gx_mw0:		ld	a,(hl)
@@ -497,7 +497,7 @@ gx_mw0:		ld	a,(hl)
 gx_mc:		db	0
 
 ; clr_inv: очистить область инвентаря — колонки 16..31, линии 0..31, во всех трёх плоскостях
-clr_inv:	ld	c,0x90
+clr_inv:	ld	c,0x91-HUD_L
 gx_ci:		ld	h,c
 gx_ci0:		ld	l,0xC0
 		ld	b,32
@@ -513,7 +513,7 @@ gx_ci1:		ld	(hl),a
 		ld	a,c
 		add	a,0x20
 		ld	c,a
-		cp	0xF0
+		cp	0xF1-HUD_L
 		jp	nz,gx_ci
 		ret
 

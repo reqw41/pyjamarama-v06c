@@ -7,6 +7,7 @@ const CPU80=require('./vendor/cpu80.js');const Game=require('./zxgame.js');const
 const ROOT=path.join(__dirname,'..');
 const {z2n,n2z,segs}=require('./zxmap');const LO=0x8200,HI=0xFCA0;
 const nsym={};for(const l of fs.readFileSync(path.join(ROOT,'build/vec/pyjama.sym'),'latin1').split('\n')){const m=/^(\S+):\s+EQU\s+0x([0-9A-Fa-f]+)/.exec(l);if(m)nsym[m[1]]=parseInt(m[2],16);}
+const HUDL=nsym.HUD_L|0;   // 1 — русская раскладка HUD (на колонку левее)
 const IMG=fs.readFileSync(path.join(ROOT,'build/vec/pyjama.r0m'));
 const N=+process.argv[2]||100,seed=+process.argv[3]||1;const names=(process.argv[4]||'bmp16,tile,flip,dbl,milkfull,milkdec,clrinv,clrfx').split(',');
 let s=seed>>>0||1;const rnd=()=>{s^=s<<13;s>>>=0;s^=s>>17;s^=s<<5;s>>>=0;return s/4294967296;};
@@ -53,8 +54,8 @@ for(let i=0;i<N;i++){
       let exp=zafter;
       if(nm==='bmp16'){const k=PLN.find(r=>nregs.a<=r[0])[1];exp=(pl===k)?zafter:screen0;}
       else if(nm==='tile'||nm==='flip'||nm==='dbl'){const v=INKV[nregs.c&7];exp=(v>>pl&1)?zafter:screen0;}
-      if(nm==='milkfull'||nm==='milkdec'){exp=Uint8Array.from(screen0);for(let y=0;y<32;y++){let ch=false;for(let c=13;c<=15;c++)if(zafter[zaddr(y,c)]!==screen0[zaddr(y,c)])ch=true;if(ch)for(let c=12;c<=14;c++)exp[zaddr(y,c)]=zafter[zaddr(y,c+1)];}}   // в порту стакан сдвинут на колонку влево (12..14); сверка по изменённым строкам
-      if(nm==='clrinv'){exp=Uint8Array.from(zafter);for(let y=0;y<32;y++)exp[zaddr(y,16)]=0;}                                                              // область инвентаря в порту шире на колонку (с 16)
+      if(HUDL&&(nm==='milkfull'||nm==='milkdec')){exp=Uint8Array.from(screen0);for(let y=0;y<32;y++){let ch=false;for(let c=13;c<=15;c++)if(zafter[zaddr(y,c)]!==screen0[zaddr(y,c)])ch=true;if(ch)for(let c=12;c<=14;c++)exp[zaddr(y,c)]=zafter[zaddr(y,c+1)];}}   // в порту стакан сдвинут на колонку влево (12..14); сверка по изменённым строкам
+      if(HUDL&&nm==='clrinv'){exp=Uint8Array.from(zafter);for(let y=0;y<32;y++)exp[zaddr(y,16)]=0;}                                                              // область инвентаря в порту шире на колонку (с 16)
       for(const b of diff(exp,n.mem,0x8000+0x2000*pl))bad.push('п'+pl+' '+b);if(bad.length>5)break;
     }
     if(process.env.DBG&&nm==='bmp16'&&i===0){const cz=new Set(),cn=new Set();for(let y=0;y<192;y++)for(let c=0;c<32;c++){if(zafter[zaddr(y,c)]!==screen0[zaddr(y,c)])cz.add(c+','+y);if(n.mem[0x8000+c*256+223-y]!==screen0[zaddr(y,c)])cn.add(c+','+y);}console.log('ZX изменил колонки',[...new Set([...cz].map(x=>x.split(',')[0]))],'строки',Math.min(...[...cz].map(x=>+x.split(',')[1])),Math.max(...[...cz].map(x=>+x.split(',')[1])),'| нативный колонки',[...new Set([...cn].map(x=>x.split(',')[0]))],'строки',Math.min(...[...cn].map(x=>+x.split(',')[1])),Math.max(...[...cn].map(x=>+x.split(',')[1])));}

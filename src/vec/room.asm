@@ -347,19 +347,19 @@ Inv_Redraw:	call	clr_inv
 		push	hl
 		ld	a,(Pocket1)
 		call	obj_text
-		ld	de,0x0013
+		ld	de,0x0014-HUD_L
 		ld	c,0x44
 		call	InventoryDrawText
 		pop	hl
-		ld	de,0x0213
+		ld	de,0x0214-HUD_L
 		ld	c,0x45
 		call	InventoryDrawText
-		ld	hl,0x0080
+		ld	hl,0x0088-8*HUD_L
 		ld	(BitmapX),hl
 		ld	a,(Pocket1)
 		add	a,0x50
 		call	bmp16
-		ld	hl,0x1080
+		ld	hl,0x1088-8*HUD_L
 		ld	(BitmapX),hl
 		ld	a,(Pocket2)
 		add	a,0x50
