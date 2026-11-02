@@ -20,4 +20,15 @@ def apply(px):
     for y in range(86,104):
         for x in range(120,136):
             if px[y][x]==6 and (x*3+y*5)%7==0: px[y][x]=2
+    # плоские золотые квадраты атрибутов (кроме полос обоев слева) — «ткань» с красной штриховкой, как у волос: без резких блоков
+    for cy in range(24):
+        for cx in range(32):
+            if cx<8: continue
+            vals=[px[y][x] for y in range(cy*8,cy*8+8) for x in range(cx*8,cx*8+8)]
+            nz=[v for v in vals if v!=0]
+            if len(nz)>=40 and sum(1 for v in nz if v==6)>=0.9*len(nz):
+                for y in range(cy*8,cy*8+8):
+                    for x in range(cx*8,cx*8+8):
+                        if px[y][x]==6 and (x*3+y*5)%7==0: px[y][x]=2
+                        elif px[y][x]==6 and (x+y)%4==0 and cx>=22: px[y][x]=7
     return px
