@@ -87,6 +87,7 @@ menu_start:	ld	sp,STACK_TOP
 		ld	(TileStartPtr),hl
 		ld	hl,mn_head
 		call	mn_list
+		call	mn_copy			; значок (c) в круге (после текста: пробелы строки его бы стёрли)
 		ld	a,2			; курсор на «Начать игру»
 		ld	(m_cur),a
 		call	mn_redraw
@@ -209,6 +210,19 @@ mnr_l:		ld	a,0xFF
 		cp	0xA0
 		jp	nz,mnr_l
 		ret
+; mn_copy: значок копирайта 8x8 (белый, плоскость 0) в колонке MN_CPY_C, строка 19
+mn_copy:	ld	hl,mn_cpg
+		ld	d,0x80+MN_CPY_C
+		ld	e,0xDF-8*19
+		ld	b,8
+mnc_l:		ld	a,(hl)
+		ld	(de),a
+		inc	hl
+		dec	e
+		dec	b
+		jp	nz,mnc_l
+		ret
+mn_cpg:		db	0x3C,0x42,0x99,0xA1,0xA1,0x99,0x42,0x3C
 ; перерисовать пункты (курсор оранжевый, у включённых устройств звёздочка) и панель описания
 mn_redraw:	ld	b,0
 mr_i:		ld	a,(m_cur)
