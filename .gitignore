@@ -1,6 +1,5 @@
 # сборка и промежуточные файлы
 build/
-rom/
 *.bak
 __pycache__/
 .DS_Store
