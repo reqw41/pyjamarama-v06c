@@ -21,10 +21,14 @@ title_start:	ld	sp,STACK_TOP
 		ld	hl,tp_2			; плоскость 2: поток лежит в конце неё же — распаковка «на месте» (вывод всегда не меньше ввода)
 		ld	bc,0xC000
 		call	dzx0
-		ld	hl,0xE000-TP_TRIM	; хвост плоскости 2 (полоса вне картинки) не сжат — 0xFF
-		ld	a,0xFF
-tt_fl:		ld	(hl),a
-		inc	l
+		ld	hl,title_tail		; хвост плоскости 2 (не сжат) на место
+		ld	de,0xE000-TP_TRIM
+		ld	b,TP_TRIM
+tt_fl:		ld	a,(hl)
+		ld	(de),a
+		inc	hl
+		inc	de
+		dec	b
 		jp	nz,tt_fl
 tt_up:		call	any_key			; ждать, пока всё отпущено
 		jp	nz,tt_up

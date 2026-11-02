@@ -11,6 +11,7 @@ def load(p):
 PAL=load('art/title/palette.py').PAL            # 8 цветов RGB по коду
 FIX=load('art/title/fixes.py')
 px=load_zx()
+px=[[7]*256 for _ in range(32)]+px+[[7]*256 for _ in range(32)]    # экран Вектора 256x256: картинка ZX 256x192 по центру, поля белые
 px=FIX.apply(px)
 # --- если есть раскрашенный внешней моделью/художником рисунок (art/title/colored.png), он заменяет раскраску: пиксели -> ближайший цвет палитры (PJ_DITHER=1 — с диффузией ошибки), чёрные контуры оригинала (outline_1x.png) остаются тёмно-фиолетовыми
 _col='art/title/colored.png'
@@ -23,13 +24,13 @@ if os.path.exists(_col):
     if abs(ci.size[0]/ci.size[1]-1)<0.05:
         # квадратная картинка: 192x192 по центру, поля 32 пикселя слева и справа — белые (код 7). Блок исходных пикселей -> один пиксель: контур (>=22% тёмных) приоритетнее, иначе самый частый цвет
         S=ci.size[0]; ref=[[near(ci.getpixel((x,y))) for x in range(S)] for y in range(S)]
-        px=[[7]*256 for _ in range(192)]
-        for ty in range(192):
-            for tx in range(192):
-                x0,x1=tx*S//192,max((tx+1)*S//192,tx*S//192+1); y0,y1=ty*S//192,max((ty+1)*S//192,ty*S//192+1)
+        px=[[7]*256 for _ in range(256)]
+        for ty in range(256):
+            for tx in range(256):
+                x0,x1=tx*S//256,max((tx+1)*S//256,tx*S//256+1); y0,y1=ty*S//256,max((ty+1)*S//256,ty*S//256+1)
                 cnt=_C(ref[y][x] for y in range(y0,y1) for x in range(x0,x1)); n=sum(cnt.values())
-                px[ty][32+tx]=0 if cnt[0]>=0.22*n else cnt.most_common(1)[0][0] if cnt.most_common(1)[0][0]!=0 else cnt.most_common(2)[-1][0]
-        print('раскраска взята из',_col,'(квадрат 192x192 по центру)')
+                px[ty][tx]=0 if cnt[0]>=0.22*n else cnt.most_common(1)[0][0] if cnt.most_common(1)[0][0]!=0 else cnt.most_common(2)[-1][0]
+        print('раскраска взята из',_col,'(квадрат на весь экран 256x256)')
     else:
         if ci.size!=(256,192): ci=ci.resize((256,192),_I.BOX)
         la=_I.open('art/title/outline_1x.png').convert('L')
@@ -37,43 +38,41 @@ if os.path.exists(_col):
         dith=os.environ.get('PJ_DITHER','0')=='1'
         for y in range(192):
             for x in range(256):
-                c=cp[y][x]; k=near(c); px[y][x]=k
+                c=cp[y][x]; k=near(c); px[y+32][x]=k
                 if dith:
                     e=[c[i]-PAL[k][i] for i in range(3)]
                     for dx,dy,w in((1,0,7),(-1,1,3),(0,1,5),(1,1,1)):
                         nx,ny=x+dx,y+dy
                         if 0<=nx<256 and 0<=ny<192:
                             for i in range(3): cp[ny][nx][i]+=e[i]*w/16
-                if la.getpixel((x,y))==0: px[y][x]=0
+                if la.getpixel((x,y))==0: px[y+32][x]=0
         print('раскраска взята из',_col)
 # палитра Вектора: BBGGGRRR
 def vbyte(c): return ((round(c[2]/85)&3)<<6)|((round(c[1]/36.43)&7)<<3)|(round(c[0]/36.43)&7)
 VB=[vbyte(c) for c in PAL]
 def unb(b): return (((b>>0)&7)*255//7,((b>>3)&7)*255//7,((b>>6)&3)*255//3)
 PREV=[unb(b) for b in VB]
-render(px,PREV,3).save('build/vec/title_preview.png')
+render(px,PREV,3,(0,0,256,256)).save('build/vec/title_preview.png')
 # плоскости: бит k кода -> плоскость k; адрес = колонка*256 + (223-y); полосы вне 192 строк — код 7 (белый)
 planes=[bytearray(0x2000) for _ in range(3)]
-for c in range(32):
-    for l in list(range(0,32))+list(range(224,256)):
-        for k in range(3): planes[k][c*256+l]=0xFF
-for y in range(192):
+for y in range(256):
     for x in range(256):
         v=px[y][x]
         for k in range(3):
-            if (v>>k)&1: planes[k][(x>>3)*256+223-y]|=0x80>>(x&7)
+            if (v>>k)&1: planes[k][(x>>3)*256+255-y]|=0x80>>(x&7)
 def zx0(buf,name):
     open('/tmp/_z.bin','wb').write(bytes(buf))
     subprocess.run(['tools/zx0/zx0','-f','-c','/tmp/_z.bin',name],stdout=subprocess.DEVNULL)
     return os.path.getsize(name)
-TRIM=int(os.environ.get('PJ_TRIM','32'))          # хвост плоскости 2 (полоса вне картинки, 0xFF) не сжимается: запас для распаковки «на месте»
-assert all(b==0xFF for b in planes[2][0x2000-TRIM:])
+TRIM=32          # хвост плоскости 2 не сжимается (копируется кодом): запас для распаковки «на месте»
 open('build/vec/title_planes.bin','wb').write(bytes(planes[0]+planes[1]+planes[2]))
 sz=[zx0(planes[0],'build/vec/tp_0.zx0'),zx0(planes[1],'build/vec/tp_1.zx0'),zx0(planes[2][:0x2000-TRIM],'build/vec/tp_2.zx0')]
 print('заставка: ZX0 плоскостей',sz,'всего',sum(sz))
+TAIL=bytes(planes[2][0x2000-TRIM:])
 with open('src/vec/title_pal.inc','w') as f:
     f.write('; сгенерировано tools/mktitle_pic.py (не править)\n')
     f.write('pal_title:\tdb\t'+','.join('0x%02X,0x%02X'%(VB[c],VB[c]) for c in (0,4,2,6,1,5,3,7))+'\t; пары по индексу аппаратной палитры (порядок кодов 0,4,2,6,1,5,3,7)\n')
     f.write('TP_TRIM\tEQU\t%d\n'%TRIM)
+    f.write('title_tail:\tdb\t'+','.join(str(b) for b in TAIL)+'\t; хвост плоскости 2 не сжат: запас для распаковки на месте\n')
     for k in range(3): f.write('TP%d_LEN\tEQU\t%d\n'%(k,sz[k]))
 assert sz[0]+sz[1]+sz[2]<=0x2000,'потоки не влезают в плоскость 2'
