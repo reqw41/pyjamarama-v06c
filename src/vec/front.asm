@@ -1,16 +1,11 @@
-; Фронт: заставка (картинка ZX0 + мелодия на канале 1 ВИ53), цикл «заставка → игра → конец → заставка». Нативный i8080. Код — в MODSLOT_FRONT (0xC000..).
-; Заставка — линейный рисунок чернилами из экрана ZX (tools/mktitle.py): картинка (плоскость 0) + карта цветов ячеек 8x8 (код цвета v, ZX0) — colorize раскладывает рисунок по плоскостям,
-; палитра заставки pal_title — оригинальные цвета ZX Spectrum: карта = байт на ячейку (ink биты 0-2, paper биты 3-5), цвет ZX = код (бит 0 — плоскость 0 и т. д.). Меню/настройка клавиш/демо ZX не переносятся (управление фиксировано: docs/PORT_PLAN.md).
+; Фронт: заставка (один раз при запуске) и меню (после заставки и после каждой игры). Нативный i8080.
+; Заставка — экран ZX с idpixel.ru (tools/mktitle.py): рисунок в плоскости 0 (ZX0) + карта цветов ячеек 8x8 (ink биты 0-2, paper биты 3-5, ZX0); colorize раскладывает рисунок по плоскостям.
+; Меню: выбор управления (клавиатура / джойстик «П» включаются и выключаются) и старт игры; тексты — menu_txt.inc (tools/mkmenu.py).
 
-pal_title:	db	0x00,0x00, 0x28,0x28, 0x05,0x05, 0x2D,0x2D, 0x80,0x80, 0xA8,0xA8, 0x85,0x85, 0xAD,0xAD	; оригинальные цвета ZX (обычная яркость): код = цвет ZX (0 чёрный, 1 синий, 2 красный, 3 пурпурный, 4 зелёный, 5 циан, 6 жёлтый, 7 белый)
+pal_title:	db	0x00,0x00, 0x38,0x38, 0x07,0x07, 0x3F,0x3F, 0xC0,0xC0, 0xF8,0xF8, 0xC7,0xC7, 0xFF,0xFF	; пары по индексу аппаратной палитры (порядок кодов 0,4,2,6,1,5,3,7), цвета ZX полной яркости: код = цвет ZX (0 чёрный, 1 синий, 2 красный, 3 пурпурный, 4 зелёный, 5 циан, 6 жёлтый, 7 белый)
 
-; ---- заставка ----
-title_start:
-title_return:	ld	sp,STACK_TOP
-		xor	a
-		ld	(inv_cheat),a		; неуязвимость включается только F1+F3 на заставке
-		call	snd_stop
-		call	mus_stop
+; ---- заставка (только при запуске) ----
+title_start:	ld	sp,STACK_TOP
 		ld	hl,pal_title
 		ld	(pal_ptr),hl
 		ld	a,14			; бордюр на заставке — белый (индекс 14 = код 7, плоскости 0..2)
@@ -22,46 +17,232 @@ title_return:	ld	sp,STACK_TOP
 		ld	bc,0x8000
 		call	dzx0
 		call	fill_strips		; верх и низ (линии вне картинки ZX) — белые
-		ld	hl,Bmp_Tiles		; база тайлов шрифта (в образе — ZX-адрес)
-		ld	(TileStartPtr),hl
-		ld	hl,StrAnyKey		; «PRESS A KEY TO CONTINUE» одинарным шрифтом
-		ld	de,TITLE_DE		; строка 23, колонка по языку (lang.inc)
-		ld	c,0x46
-		call	FurnitureDraw
-		ld	hl,title_v_zx0		; карта цветов ячеек -> ATTR (поверх атрибутов надписи; игре на заставке карта не нужна: Game_Start её перезаполняет)
+		ld	hl,title_v_zx0		; карта цветов ячеек -> ATTR (игре на заставке карта не нужна: Game_Start её перезаполняет)
 		ld	bc,ATTR
 		call	dzx0
-		call	colorize		; надпись нарисована до этого в плоскости 0 как часть рисунка: чернила — по карте
-		call	title_logo		; пиксели логотипа с цветом, отличным от цвета ячейки
+		call	colorize
 tt_up:		call	any_key			; ждать, пока всё отпущено
 		jp	nz,tt_up
-		call	mus_start
-tt_loop:	ld	a,(FRAMES)
-		ld	b,a
-tt_w:		ld	a,(FRAMES)
-		cp	b
+tt_w:		call	frame_wait
+		call	any_key
 		jp	z,tt_w
-		ld	a,(vec_kbmat+1)		; F1 (0x08) + F3 (0x20) вместе — старт с неуязвимостью
-		and	0x28
-		cp	0x28
-		jp	nz,tt_nc
-		ld	(inv_cheat),a
-		jp	tt_go
-tt_nc:		call	any_key
-		jp	nz,tt_go
-		ld	a,(mus_end)		; мелодия кончилась — играть заново (демо ZX не переносится)
-		or	a
-		jp	z,tt_loop
-		call	mus_start
-		jp	tt_loop
-tt_go:		call	mus_stop
+		; дальше — меню
+
+; ---- меню ----
+title_return:
+menu_start:	ld	sp,STACK_TOP
 		xor	a
-		ld	(bord_idx),a		; в игре бордюр — цвет 0
+		ld	(inv_cheat),a
+		ld	(paused),a
+		ld	a,7			; пока кнопки отпущены не будут — новых нажатий нет (ВК с заставки не должен сразу стартовать)
+		ld	(m_prev),a
+		call	snd_stop
 		ld	hl,pal
 		ld	(pal_ptr),hl
+		xor	a
+		ld	(bord_idx),a		; в меню и в игре бордюр — цвет 0
 		ld	a,3
 		ld	(pal_load),a
+		call	clear_screen
+		call	draw_logo		; логотип в нижней полосе (буфер распаковки — ATTR)
+		ld	hl,Bmp_Tiles		; база тайлов шрифта (в образе — ZX-адрес)
+		ld	(TileStartPtr),hl
+		ld	hl,mn_head
+		call	mn_list
+		ld	a,2			; курсор на «Начать игру»
+		ld	(m_cur),a
+		call	mn_redraw
+mnl_loop:	call	frame_wait
+		ld	a,(vec_kbmat+1)		; Ф1 + Ф3 вместе — старт с неуязвимостью
+		and	0x28
+		cp	0x28
+		jp	nz,mnl_nc
+		ld	(inv_cheat),a
+		jp	mn_go
+mnl_nc:		ld	a,(vec_kbmat)		; кнопки: бит 0 — вверх, 1 — вниз, 2 — выбор
+		ld	b,a
+		ld	c,0
+		and	0x20			; стрелка вверх
+		jp	z,mnl1
+		inc	c
+mnl1:		ld	a,b
+		and	0x80			; стрелка вниз
+		jp	z,mnl2
+		ld	a,c
+		or	2
+		ld	c,a
+mnl2:		ld	a,b
+		and	0x04			; ВК
+		jp	nz,mnl3
+		ld	a,(vec_kbmat+7)		; пробел
+		and	0x80
+		jp	z,mnl4
+mnl3:		ld	a,c
+		or	4
+		ld	c,a
+mnl4:		in	a,(0x06)		; джойстик «П»: огонь — выбор
+		ld	hl,vj_rest+1
+		xor	(hl)
+		ld	b,a
+		and	0x30
+		jp	nz,mnl5
+		ld	a,b
+		and	0xC0
+		jp	z,mnl5
+		ld	a,c
+		or	4
+		ld	c,a
+mnl5:		ld	a,(in_state)		; джойстик влево/вправо — вверх/вниз по пунктам (в in_state же клавиши, но они тоже листают)
+		ld	b,a
+		and	IN_LEFT
+		jp	z,mnl6
+		ld	a,c
+		or	1
+		ld	c,a
+mnl6:		ld	a,b
+		and	IN_RIGHT
+		jp	z,mnl7
+		ld	a,c
+		or	2
+		ld	c,a
+mnl7:		ld	hl,m_prev		; только новые нажатия
+		ld	a,(hl)
+		cpl
+		and	c
+		ld	b,a
+		ld	(hl),c
+		ld	a,b
+		rrca
+		jp	nc,mnl_dn
+		ld	a,(m_cur)		; вверх
+		or	a
+		jp	z,mnl_loop
+		dec	a
+		jp	mnl_mv
+mnl_dn:		rrca
+		jp	nc,mnl_sel
+		ld	a,(m_cur)		; вниз
+		cp	2
+		jp	z,mnl_loop
+		inc	a
+mnl_mv:		ld	(m_cur),a
+		call	mn_redraw
+		jp	mnl_loop
+mnl_sel:		rrca
+		jp	nc,mnl_loop
+		ld	a,(m_cur)		; выбор пункта
+		cp	2
+		jp	z,mn_go
+		inc	a			; 0 -> маска 1, 1 -> маска 2
+		ld	b,a
+		ld	a,(in_mask)
+		xor	b
+		jp	nz,mnl_s1
+		ld	a,3			; обе выключены — включить обе
+mnl_s1:		ld	(in_mask),a
+		call	mn_redraw
+		jp	mnl_loop
+mn_go:		call	any_key			; старт: дождаться, пока отпустят кнопки (ВК не должен стать паузой)
+		jp	nz,mn_go
+		xor	a
+		ld	(paused),a
+		ld	hl,vk_prev
+		ld	(hl),a
 		jp	Game_Start
+
+; перерисовать пункты (курсор оранжевый, у включённых устройств звёздочка) и панель описания
+mn_redraw:	ld	b,0
+mr_i:		ld	a,(m_cur)
+		cp	b
+		ld	c,1			; белый
+		jp	nz,mr_i1
+		ld	c,6			; оранжевый (курсор)
+mr_i1:		ld	hl,mn_it
+		ld	e,b
+		ld	d,0
+		add	hl,de
+		add	hl,de
+		ld	e,(hl)
+		inc	hl
+		ld	d,(hl)
+		ex	de,hl			; HL -> строка, колонка, коды
+		ld	d,(hl)
+		inc	hl
+		inc	hl			; колонка текста — 6 (задана в mt1 ниже)
+		ld	e,4			; метка курсора
+		ld	a,(m_cur)
+		cp	b
+		ld	a,0x20
+		jp	nz,mr_i2
+		ld	a,'>'
+mr_i2:		call	tile_px
+		ld	e,6
+		call	mt1
+		ld	a,b
+		cp	2
+		jp	nc,mr_i3
+		inc	a			; маска устройства: 1 — клавиатура, 2 — джойстик
+		ld	h,a
+		ld	c,1
+		ld	e,18			; звёздочка у включённого
+		ld	a,(in_mask)
+		and	h
+		ld	a,0x20
+		jp	z,mr_i4
+		ld	a,'*'
+mr_i4:		call	tile_px
+mr_i3:		inc	b
+		ld	a,b
+		cp	3
+		jp	c,mr_i
+		ld	a,(m_cur)		; панель
+		add	a,a
+		ld	e,a
+		ld	d,0
+		ld	hl,mn_p
+		add	hl,de
+		ld	e,(hl)
+		inc	hl
+		ld	d,(hl)
+		ex	de,hl
+; список записей: строка, колонка, ink, коды..., 0; конец списка — строка 0xFF
+mn_list:	ld	a,(hl)
+		inc	a
+		ret	z
+		ld	d,(hl)
+		inc	hl
+		ld	e,(hl)
+		inc	hl
+		ld	c,(hl)
+		inc	hl
+		call	mt1
+		jp	mn_list
+; mt1: D = строка, E = колонка, C = цвет, HL -> коды до нуля; хвост строки до колонки 32 забивается пробелами; HL -> после нуля
+mt1:		ld	a,(hl)
+		inc	hl
+		or	a
+		jp	z,mt2
+		call	tile_px
+		inc	e
+		jp	mt1
+mt2:		ld	a,e
+		cp	32
+		ret	nc
+		ld	a,0x20
+		call	tile_px
+		inc	e
+		jp	mt2
+
+m_cur:		db	0
+m_prev:		db	0
+
+; ждать следующего кадра (прерывание)
+frame_wait:	ld	a,(FRAMES)
+		ld	b,a
+frw1:		ld	a,(FRAMES)
+		cp	b
+		jp	z,frw1
+		ret
 
 ; NZ — нажата любая клавиша Вектора (кроме F1/F3: они только для неуязвимости) или «огонь/вверх» джойстика
 any_key:	ld	a,(vec_kbmat+1)
@@ -81,102 +262,7 @@ ak0:		or	(hl)
 		or	b
 		ret
 
-; ---- музыка: канал 1 ВИ53 (порт 0x0A, управляющее слово 0x76), ноты ходит ISR раз в кадр (mus_tick из прерывания) ----
-; Партитура — Music_ScoreSheet из образа данных: пары (повтор, нота), 0 — конец, нота FF — пауза; каждая нота повторяется «повтор» раз, после каждого повтора — кадр тишины.
-mus_start:	ld	hl,Music_ScoreSheet
-		ld	(mus_p),hl
-		xor	a
-		ld	(mus_rep),a
-		ld	(mus_end),a
-		ld	(mus_ph),a
-		inc	a
-		ld	(mus_cnt),a		; следующий mus_tick возьмёт первую запись (фаза «пауза»)
-		ld	(mus_ph),a
-		ld	(mus_on),a
-		ret
-mus_stop:	xor	a
-		ld	(mus_on),a
-mus_sil:	ld	a,0x70			; канал 1: режим 0 без счёта — тишина
-		out	(0x08),a
-		ret
-mus_tick:	ld	a,(mus_on)
-		or	a
-		ret	z
-		ld	hl,mus_cnt
-		dec	(hl)
-		ret	nz
-		ld	a,(mus_ph)
-		or	a
-		jp	nz,mus_adv
-		call	mus_sil			; нота доиграла: кадр тишины
-		ld	a,1
-		ld	(mus_ph),a
-		ld	(mus_cnt),a
-		ret
-mus_adv:	ld	a,(mus_rep)		; пауза кончилась: повтор или следующая запись
-		or	a
-		jp	z,mus_fetch
-		dec	a
-		ld	(mus_rep),a
-		jp	mus_play
-mus_fetch:	ld	hl,(mus_p)
-		ld	a,(hl)
-		or	a
-		jp	z,mus_over
-		ld	b,a			; повтор
-		inc	hl
-		ld	a,(hl)
-		inc	hl
-		ld	(mus_p),hl
-		ld	(mus_note),a
-		cp	0xFF
-		jp	nz,mus_nn
-		xor	a			; пауза 6 кадров, без повторов
-		ld	(mus_rep),a
-		ld	a,6
-		ld	(mus_cnt),a
-		jp	mus_sil
-mus_nn:		ld	a,b
-		dec	a
-		ld	(mus_rep),a
-mus_play:	ld	a,(mus_note)
-		dec	a
-		ld	e,a
-		ld	d,0
-		ld	hl,mus_n_fr
-		add	hl,de
-		ld	a,(hl)
-		ld	(mus_cnt),a
-		ld	hl,mus_n_div
-		add	hl,de
-		add	hl,de
-		ld	a,0x76
-		out	(0x08),a
-		ld	a,(hl)
-		out	(0x0A),a
-		inc	hl
-		ld	a,(hl)
-		out	(0x0A),a
-		xor	a
-		ld	(mus_ph),a
-		ret
-mus_over:	xor	a
-		ld	(mus_on),a
-		inc	a
-		ld	(mus_end),a
-		jp	mus_sil
-mus_on:		db	0
-mus_end:	db	0
-mus_ph:		db	0			; 0 — звучит нота, 1 — пауза/тишина
-mus_cnt:	db	0			; кадров до смены
-mus_rep:	db	0
-mus_note:	db	0
-mus_p:		dw	0
-		INCLUDE	"music_gen.inc"
+title_v_zx0:	INCBIN	"../../build/vec/title_v.zx0"
+		INCLUDE	"menu_txt.inc"
 
-		INCLUDE	"dzx0.asm"
 title_zx0:	INCBIN	"../../build/vec/title.zx0"
-
-
-
-

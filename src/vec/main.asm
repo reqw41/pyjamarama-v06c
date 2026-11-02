@@ -15,6 +15,8 @@
 		INCLUDE	"events_a.asm"
 		INCLUDE	"invaders.asm"
 		INCLUDE	"tcolor.asm"
+		INCLUDE	"dzx0.asm"
+		INCLUDE	"dlogo.asm"
 ; старт: пока сразу в игру (заставка и меню — во фронте, этап 4)
 game_main:	jp	title_start
 gm_w1:		ld	a,1			; для tools/sndcheck.js: цикл опроса звука вне игры (точка возврата beep)

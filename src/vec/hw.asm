@@ -92,7 +92,6 @@ isr_np:		ld	hl,FRAMES
 		ld	(paused),a
 isr_nv:
 		call	snd_poll_isr		; звук: продвинуть ноты (раз в кадр; в паузе игры — чаще)
-		call	mus_tick		; мелодия заставки (канал 1)
 		pop	hl
 		pop	de
 		pop	bc
@@ -148,6 +147,7 @@ vs0:		ld	a,b
 ; --- вход игры: in_state = IN_RIGHT|IN_LEFT|IN_JUMP из клавиатуры и джойстика «П» -------------------------------
 ; клавиши: стрелки ←/→, пробел и ↑ — прыжок; как в ZX-оригинале O/P/M (влево/вправо/прыжок); джойстик «П»: огонь — прыжок
 in_state:	db	0
+in_mask:	db	3
 in_build:	ld	a,(vec_kbmat+0)		; стрелки: 0x10 влево, 0x40 вправо, 0x20 вверх
 		ld	b,a
 		ld	c,0
@@ -191,7 +191,15 @@ ib6:		ld	a,b
 		ld	a,c
 		or	IN_JUMP
 		ld	c,a
-ib7:		in	a,(0x06)		; джойстик «П»
+ib7:		ld	a,(in_mask)		; бит 0 — клавиатура, бит 1 — джойстик (меню)
+		ld	b,a
+		rrca
+		jp	c,ib7k
+		ld	c,0
+ib7k:		ld	a,b
+		and	2
+		jp	z,ib9
+		in	a,(0x06)		; джойстик «П»
 vj_rest:	xor	0xFF			; покой -> 1 = нажато
 		ld	b,a
 		and	0x30			; биты 4,5 в покое единица: иначе порта нет — не считать

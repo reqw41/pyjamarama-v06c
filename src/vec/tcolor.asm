@@ -118,7 +118,6 @@ cz_f1:		ld	(hl),a
 		ret
 cz_v:		db	0
 cz_o:		db	0
-title_v_zx0:	INCBIN	"../../build/vec/title_v.zx0"
 
 ; fill_strips: линии Вектора 224..255 и 0..31 (вне 192 строк картинки) всех колонок трёх плоскостей = 0xFF (код цвета 7: белый на заставке)
 fill_strips:	ld	d,0x80
