@@ -1,5 +1,5 @@
 'use strict';
-const fs=require('fs');const ZX48=require('/Users/boris/projects/pyjamarama-v06c/tools/zx48.js');
+const fs=require('fs');const ZX48=require('./zx48.js');
 const bl=[1,2,3,4,5].map(k=>fs.readFileSync('/tmp/rus/b'+k+'.bin'));
 const zx=new ZX48();
 zx.mem.set(bl[0].subarray(1,1+443),0x5ccb);
