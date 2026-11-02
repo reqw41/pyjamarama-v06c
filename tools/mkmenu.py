@@ -9,14 +9,14 @@ EN={'head':'SELECT CONTROLS','items':['KEYBOARD','JOYSTICK','START GAME'],
  'panels':[['LEFT, RIGHT: ARROWS OR O, P','JUMP: SPACE, UP OR M','PAUSE: ENTER','BACK TO MENU: ESC','ENTER OR SPACE - ON, OFF'],
            ['JOYSTICK, PORT P:','LEFT, RIGHT - TILT','JUMP - FIRE OR UP','PAUSE: ENTER, MENU: ESC','ENTER OR FIRE - ON, OFF'],
            ['PRESS ENTER, SPACE OR FIRE','AND WALLY WILL WAKE UP IN TIME','STAR - CONTROLS ENABLED']],
- 'hint':'UP, DOWN - SELECT'}
+ 'hint':'UP, DOWN - SELECT','credit':'ORIGINAL BY MICRO-GEN 1984'}
 if L=='en': M=EN; CODE={chr(c):c for c in range(32,91)}
 else:
     T=i18n.load(L); M=T.MENU; CODE=T.CODE
 def enc(s): return ','.join('0x%02X'%CODE[c] for c in s)+',0'
 out=['; сгенерировано tools/mkmenu.py (не править): тексты меню']
 def rec(r,c,ink,s): return '\tdb\t%d,%d,%d,%s'%(r,c,ink,enc(s))
-out.append('mn_head:\n'+rec(0,(32-len(M['head']))//2,7,M['head'])+'\n'+rec(20,(32-len(M['hint']))//2,7,M['hint'])+'\n\tdb\t0xFF')
+out.append('mn_head:\n'+rec(0,(32-len(M['head']))//2,7,M['head'])+'\n'+rec(20,(32-len(M['hint']))//2,7,M['hint'])+'\n'+rec(18,(32-len(M.get('credit','ORIGINAL BY MICRO-GEN 1984')))//2,6,M.get('credit','ORIGINAL BY MICRO-GEN 1984'))+'\n\tdb\t0xFF')
 for i,s in enumerate(M['items']): out.append('mn_it%d:\tdb\t%d,6,%s'%(i,3+2*i,enc(s)))
 out.append('mn_it:\tdw\tmn_it0,mn_it1,mn_it2')
 for k,p in enumerate(M['panels']):

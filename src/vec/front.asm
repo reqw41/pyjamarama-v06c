@@ -75,7 +75,14 @@ menu_start:	ld	sp,STACK_TOP
 		ld	(bord_idx),a		; в меню и в игре бордюр — цвет 0
 		ld	a,3
 		ld	(pal_load),a
+		xor	a			; в меню фон чёрный (как в ремейке PICO-8); в игре — прежний тёмно-синий
+		ld	(pal),a
+		ld	(pal+1),a
 		call	clear_area		; логотип уже в экране — не трогаем
+		ld	a,32+8*9+3		; белые линии-рамки над и под описанием управления (строки экрана 9 и 15)
+		call	mn_rule
+		ld	a,32+8*15+3
+		call	mn_rule
 		ld	hl,Bmp_Tiles		; база тайлов шрифта (в образе — ZX-адрес)
 		ld	(TileStartPtr),hl
 		ld	hl,mn_head
@@ -178,12 +185,30 @@ mn_go:		call	mus_stop
 		jp	nz,mn_go
 		ld	a,0xFF
 		ld	(scroll_v),a		; в игре без сдвига
+		ld	a,0x49			; фон игры — тёмно-синий
+		ld	(pal),a
+		ld	(pal+1),a
+		ld	a,3
+		ld	(pal_load),a
+		ld	hl,pal
+		ld	(pal_ptr),hl
 		xor	a
 		ld	(paused),a
 		ld	hl,vk_prev
 		ld	(hl),a
 		jp	Game_Start
 
+; mn_rule: белая линия на всю ширину в строке экрана A (0 — верх), плоскость 0 (цвет 1)
+mn_rule:	cpl
+		ld	e,a			; e = 255 - y
+		ld	d,0x80
+mnr_l:		ld	a,0xFF
+		ld	(de),a
+		inc	d
+		ld	a,d
+		cp	0xA0
+		jp	nz,mnr_l
+		ret
 ; перерисовать пункты (курсор оранжевый, у включённых устройств звёздочка) и панель описания
 mn_redraw:	ld	b,0
 mr_i:		ld	a,(m_cur)
