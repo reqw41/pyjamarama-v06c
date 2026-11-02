@@ -1,5 +1,5 @@
 ; сгенерировано tools/mkvecdata.py: метки данных ZX V1 в уплотнённой раскладке Вектора (карта сегментов — reloc.json)
-DATA_END	EQU 0x513B
+DATA_END	EQU 0x5177
 IgnoreEnergy	EQU 0x0100
 Table_RoomDataPtr	EQU 0x0101
 Bmp_MilkFull	EQU 0x013D
@@ -173,11 +173,14 @@ Music_NotePitch	EQU 0x4C2E
 Music_NoteDuration	EQU 0x4C30
 Music_EndFlag	EQU 0x4C32
 EnergyCounter	EQU 0x4C33
-ScoreBoard_Item	EQU 0x4F28
-StrAnyKey	EQU 0x4F85
-StrLose	EQU 0x4FA0
-StrCongrats	EQU 0x505F
-StrFinalScore	EQU 0x50F8
+Obj_Alt0	EQU 0x4DCE
+Obj_Alt1	EQU 0x4DE0
+Obj_Alt2	EQU 0x4DF4
+ScoreBoard_Item	EQU 0x4F67
+StrAnyKey	EQU 0x4FC1
+StrLose	EQU 0x4FDC
+StrCongrats	EQU 0x509B
+StrFinalScore	EQU 0x5134
 Inv_BombFrame	EQU 0x4BFA
 Str_Full	EQU 0x4A27
 Str_Empty	EQU 0x4A2C

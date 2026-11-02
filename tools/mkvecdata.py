@@ -55,6 +55,8 @@ if PJ_LANG!='en':
     for k,txt in enumerate(T.OBJECTS):
         old=img[ot-LO+2*k]|img[ot-LO+2*k+1]<<8; drop(old)
         OVR[(0xE48E,k)]=place(i18n.encode(i18n.lines_to_toks(txt.split('|'),CODE)))
+    for k,txt in enumerate(T.OBJECTS_ALT):       # «пустые» названия — метки Obj_Alt0..2 (obj_text в room.asm, IFDEF OBJ_ALT)
+        a=place(i18n.encode(i18n.lines_to_toks(txt.split('|'),CODE))); datalab['Obj_Alt%d'%k]=a
     # 2) мебель (FurniturePtrTable, индексы из i18n)
     ft=labaddr['FurniturePtrTable']; olds=[img[ft-LO+2*k]|img[ft-LO+2*k+1]<<8 for k in range(66)]
     for k,repl in T.FURNITURE.items():
@@ -68,6 +70,7 @@ if PJ_LANG!='en':
     i18n.patch_font(img,labaddr['Bmp_Tiles']-LO,T.GLYPHS,CODE)
     TITLE_DE=0x1700|T.TITLE_COL
 open('src/vec/lang.inc','w').write('TITLE_DE\tEQU\t0x%04X\n'%TITLE_DE)
+open('src/vec/objalt.inc','w').write('; сгенерировано tools/mkvecdata.py: OBJ_ALT — в русской версии у канистры, пистолета и ведра название зависит от состояния\n'+('OBJ_ALT\tEQU\t%d\nRM_ON\tEQU\t%d\t; перекраска мебели (rm_tab); в английской сборке для стендов (сверка с ZX) выключена\n'%((0,0) if PJ_LANG=='en' else (1,1))))
 # выброшено из образа: таблицы настройки клавиш и текст главного меню ZX (в порту управление фиксированное, меню нет)
 _names=sorted(labaddr.items(),key=lambda x:x[1])
 _dead_hi=lambda nm:next(a for l,a in _names if a>labaddr[nm])

@@ -5,6 +5,7 @@
 		INCLUDE	"zxsym.inc"
 		INCLUDE	"layout.inc"
 		INCLUDE	"lang.inc"
+		INCLUDE	"objalt.inc"
 		ORG	Bmp_Tiles+72
 		INCLUDE	"hole.inc"
 		ORG	0x0000

@@ -157,8 +157,10 @@ fdm_n:		pop	hl
 		jp	fdm_r
 fdt_f:		pop	af
 		call	tile_flip
-fdm_r:		ld	a,(fd_c0)
+fdm_r:		push	af			; A (номер тайла) должен сохраниться: повторы тайла (fd_rep) вызывают fd_tile с тем же A
+		ld	a,(fd_c0)
 		ld	c,a
+		pop	af
 		ret
 fd_c0:		db	0
 fd_n:		db	0
@@ -211,7 +213,9 @@ fr_end:		pop	bc
 		pop	hl
 		ret
 ; чернила ZX: 1 синий -> белый (код 1), 4 зелёный, 5 голубой, 6 жёлтый -> оранжевый (код 6), 7 белый -> светло-коричневый
-rm_tab:		db	0xFF,14,7,1		; ракета — белая
+rm_tab:
+		IF	RM_ON
+		db	0xFF,14,7,1		; ракета — белая
 		db	19,37,6,1		; шкафы в ванной — белые
 		db	19,38,6,1
 		db	0xFF,39,5,4		; цветы в кашпо — зелёные
@@ -220,6 +224,7 @@ rm_tab:		db	0xFF,14,7,1		; ракета — белая
 		db	0xFF,19,6,1		; паутина — белая
 		db	0xFF,20,6,1
 		db	0xFF,8,4,6		; спинки стульев — как ножки
+		ENDIF
 		db	0xFE
 
 ; ---- строка двойной высоты (HL, D, E, C) ----------------------------------------------------------------
@@ -299,7 +304,31 @@ idt_f:		inc	e
 		jp	idt
 
 ; HL = адрес текста предмета A
-obj_text:	ld	l,a
+obj_text:
+		IF	OBJ_ALT
+		cp	8			; канистра / пистолет / ведро: «пустое» состояние — своё название (в ZX дописывалось EMPTY)
+		jp	nz,ot_1
+		ld	hl,Flag_FuelCan
+		ld	de,Obj_Alt0
+		jp	ot_c
+ot_1:		cp	13
+		jp	nz,ot_2
+		ld	hl,Flag_LaserGun
+		ld	de,Obj_Alt1
+		jp	ot_c
+ot_2:		cp	16
+		jp	nz,ot_g
+		ld	hl,Flag_WaterBucket
+		ld	de,Obj_Alt2
+ot_c:		ld	b,a
+		ld	a,(hl)
+		or	a
+		ex	de,hl
+		ret	z
+		ld	a,b
+ot_g:
+		ENDIF
+		ld	l,a
 		ld	h,0
 		add	hl,hl
 		ld	de,ObjectTextPtrTable
@@ -318,19 +347,19 @@ Inv_Redraw:	call	clr_inv
 		push	hl
 		ld	a,(Pocket1)
 		call	obj_text
-		ld	de,0x0014
+		ld	de,0x0013
 		ld	c,0x44
 		call	InventoryDrawText
 		pop	hl
-		ld	de,0x0214
+		ld	de,0x0213
 		ld	c,0x45
 		call	InventoryDrawText
-		ld	hl,0x0088
+		ld	hl,0x0080
 		ld	(BitmapX),hl
 		ld	a,(Pocket1)
 		add	a,0x50
 		call	bmp16
-		ld	hl,0x1088
+		ld	hl,0x1080
 		ld	(BitmapX),hl
 		ld	a,(Pocket2)
 		add	a,0x50
