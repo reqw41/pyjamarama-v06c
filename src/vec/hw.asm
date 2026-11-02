@@ -190,25 +190,6 @@ ib2:		ld	a,b
 		ld	c,a
 ib3:		ld	a,(vec_kbmat+7)		; пробел
 		and	0x80
-		jp	z,ib4
-		ld	a,c
-		or	IN_JUMP
-		ld	c,a
-ib4:		ld	a,(vec_kbmat+6)		; P — вправо
-		and	0x01
-		jp	z,ib5
-		ld	a,c
-		or	IN_RIGHT
-		ld	c,a
-ib5:		ld	a,(vec_kbmat+5)		; O — влево, M — прыжок
-		ld	b,a
-		and	0x80
-		jp	z,ib6
-		ld	a,c
-		or	IN_LEFT
-		ld	c,a
-ib6:		ld	a,b
-		and	0x20
 		jp	z,ib7
 		ld	a,c
 		or	IN_JUMP

@@ -6,7 +6,7 @@ sys.path.insert(0,'tools')
 import i18n
 L=os.environ.get('PJ_LANG','ru')
 EN={'head':'SELECT CONTROLS','items':['1 KEYBOARD','2 JOYSTICK','0 START GAME'],
- 'panel':['KEYBOARD: ARROWS OR O, P','JUMP: SPACE, UP OR M','JOYSTICK: TILT, FIRE - JUMP','PAUSE: ENTER, MENU: ESC'],
+ 'panel':['KEYBOARD: ARROWS, SPACE','JUMP: SPACE OR UP','JOYSTICK: TILT, FIRE - JUMP','PAUSE: ENTER, MENU: ESC'],
  'foot':['MICRO-GEN','VECTOR 06C VERSION','BORIS LIKHACHEV']}
 if L=='en': M=EN; CODE={chr(c):c for c in range(32,91)}
 else:
