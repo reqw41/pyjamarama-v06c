@@ -19,7 +19,9 @@ if os.path.exists(_col):
     from PIL import Image as _I
     from collections import Counter as _C
     ci=_I.open(_col).convert('RGB')
+    SKIN=(253,194,105)          # телесный цвет модели -> белый (код 7): лицо, шея и руки как в оригинальной картинке
     def near(c):
+        if sum((c[i]-SKIN[i])**2 for i in range(3))<45**2: return 7
         return min(range(8),key=lambda k:sum((c[i]-PAL[k][i])**2 for i in range(3)))
     if abs(ci.size[0]/ci.size[1]-1)<0.05:
         # квадратная картинка: 192x192 по центру, поля 32 пикселя слева и справа — белые (код 7). Блок исходных пикселей -> один пиксель: контур (>=22% тёмных) приоритетнее, иначе самый частый цвет
