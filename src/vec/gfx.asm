@@ -206,7 +206,14 @@ gx_tenter:	ld	(gx_ta),a
 		ret	nc
 		ld	a,b
 		cp	24
+		ret	c
+		ld	a,(gx_neg)		; только меню: строки -4..-1 (252..255) — верхняя полоса экрана над игровым полем
+		or	a
+		ret	z
+		ld	a,b
+		add	a,4			; перенос (C) — строка >= 252
 		ret
+gx_neg:		db	0
 gx_ta:		db	0
 gx_tskip:	pop	bc
 		pop	de
@@ -372,8 +379,14 @@ tile_dbl_px:	push	af
 		jp	nc,gx_tskip
 		ld	a,b
 		cp	23
+		jp	c,gx_td0
+		ld	a,(gx_neg)
+		or	a
+		jp	z,gx_tskip
+		ld	a,b
+		add	a,4
 		jp	nc,gx_tskip
-		ld	a,(gx_fresh)
+gx_td0:		ld	a,(gx_fresh)
 		or	a
 		jp	z,gx_td1
 		ld	a,b

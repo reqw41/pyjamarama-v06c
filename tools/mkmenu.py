@@ -6,14 +6,14 @@ sys.path.insert(0,'tools')
 import i18n
 L=os.environ.get('PJ_LANG','ru')
 EN={'head':'SELECT CONTROLS','items':['1 KEYBOARD','2 JOYSTICK','0 START GAME'],
- 'panel':['KEYBOARD: ARROWS, SPACE','JUMP: SPACE OR UP','JOYSTICK: TILT, FIRE - JUMP','PAUSE: ENTER, MENU: ESC'],
+ 'panel':['KEYBOARD: ARROWS, SPACE','PAUSE: ENTER, MENU: ESC'],
  'foot':['MICRO-GEN','VECTOR 06C VERSION','BORIS LIKHACHEV']}
 if L=='en': M=EN; CODE={chr(c):c for c in range(32,91)}
 else:
     T=i18n.load(L); M=T.MENU; CODE=T.CODE
 def enc(s): return ','.join('0x%02X'%CODE[c] for c in s)+',0'
 out=['; сгенерировано tools/mkmenu.py (не править): тексты меню']
-def rec(r,c,ink,s): return '\tdb\t%d,%d,%d,%s'%(r,c,ink,enc(s))
+def rec(r,c,ink,s): return '\tdb\t%d,%d,%d,%s'%(r&255,c,ink,enc(s))
 F=M['foot']
 GL={'(c)':["..####..",".#....#.","#..##..#","#.#....#","#.#....#","#..##..#",".#....#.","..####.."],' ':["........"]*8,
 'M':["........",".##..##.",".######.",".######.",".##..##.",".##..##.",".##..##.",".##..##."],
@@ -32,10 +32,10 @@ GL={'(c)':["..####..",".#....#.","#..##..#","#.#....#","#.#....#","#..##..#",".#
 seq=['(c)',' ']+list('MICRO-GEN')+[' ']+list('1984')   # «(c) MICRO-GEN» глифами: в русском шрифте нет латиницы
 cpyc=(32-len(seq))//2
 gl='mn_cpg:\n'+'\n'.join('\tdb\t'+','.join('0x%02X'%int(r.replace('.','0').replace('#','1'),2) for r in GL[g]) for g in seq)
-out.append('mn_head:\n'+rec(0,(32-len(M['head']))//2,7,M['head'])+'\n'
- +rec(20,(32-len(F[1]))//2,6,F[1])+'\n'+rec(21,(32-len(F[2]+', 2026'))//2,6,F[2]+', 2026')+'\n'+'\n'.join(rec(10+j,0,4,t) for j,t in enumerate(M['panel']))+'\n\tdb\t0xFF')
+out.append('mn_hd:\n'+rec(-3,(32-len(M['head']))//2,7,M['head'])+'\nmn_head:\n'
+ +rec(16,(32-len(F[1]))//2,6,F[1])+'\n'+rec(17,(32-len(F[2]+', 2026'))//2,6,F[2]+', 2026')+'\n'+'\n'.join(rec(11+j,0,4,t) for j,t in enumerate(M['panel']))+'\n\tdb\t0xFF')
 out.append('MN_CPY_C\tEQU\t%d\t; колонка значка копирайта\nMN_CPY_N\tEQU\t%d\n'%(cpyc,len(seq))+gl)
-for i,t in enumerate(M['items']): out.append('mn_it%d:\tdb\t%d,6,%s'%(i,3+2*i,enc(t)))
+for i,t in enumerate(M['items']): out.append('mn_it%d:\tdb\t%d,6,%s'%(i,(3*i)&255,enc(t)))
 out.append('mn_it:\tdw\tmn_it0,mn_it1,mn_it2')
 assert all(len(t)<=32 for t in M['panel'])
 open('src/vec/menu_txt.inc','w',encoding='utf-8').write('\n'.join(out)+'\n')

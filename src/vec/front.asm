@@ -3,7 +3,7 @@
 ; Меню: выбор управления (клавиатура / джойстик «П» включаются и выключаются) и старт игры; тексты — menu_txt.inc (tools/mkmenu.py).
 
 
-MENU_SCROLL	EQU	0x2A
+MENU_SCROLL	EQU	0x36
 ; ---- заставка (только при запуске) ----
 title_start:	ld	sp,STACK_TOP
 		ld	hl,title_tail		; начало хвоста — 16 нулей: чёрная палитра, распаковку не видно
@@ -61,6 +61,8 @@ tt_w:		call	frame_wait
 ; ---- меню ----
 title_return:	call	mus_start		; после игры мелодия меню заново
 menu_start:	ld	sp,STACK_TOP
+		ld	a,1			; в меню разрешены строки -4..-1 (верхняя полоса)
+		ld	(gx_neg),a
 		ld	a,MENU_SCROLL		; сдвиг экрана скроллингом: логотип из нижней полосы — наверх
 		ld	(scroll_v),a
 		xor	a
@@ -80,12 +82,20 @@ menu_start:	ld	sp,STACK_TOP
 		ld	(pal+1),a
 		call	clear_screen		; после игры экран мог быть очищен целиком (концовки) — логотип рисуем заново
 		call	draw_logo
-		ld	a,32+8*9+3		; белые линии-рамки над и под описанием управления (строки экрана 9 и 15)
+		ld	a,32+8*10+3		; белые линии-рамки над и под описанием управления
 		call	mn_rule
-		ld	a,32+8*15+3
+		ld	a,32+8*13+4
 		call	mn_rule
 		ld	hl,Bmp_Tiles		; база тайлов шрифта (в образе — ZX-адрес)
 		ld	(TileStartPtr),hl
+		ld	hl,mn_hd		; заголовок — двойной высоты
+		ld	d,(hl)
+		inc	hl
+		ld	e,(hl)
+		inc	hl
+		ld	c,(hl)
+		inc	hl
+		call	mt1d
 		ld	hl,mn_head
 		call	mn_list
 		call	mn_copy			; значок (c) в круге (после текста: пробелы строки его бы стёрли)
@@ -121,6 +131,8 @@ mnl_set:	ld	(in_mask),a
 mn_go:		call	mus_stop
 		call	any_key			; старт: дождаться, пока отпустят кнопки (ВК не должен стать паузой)
 		jp	nz,mn_go
+		xor	a
+		ld	(gx_neg),a
 		ld	a,0xFF
 		ld	(scroll_v),a		; в игре без сдвига
 		ld	a,0x49			; фон игры — тёмно-синий
@@ -147,11 +159,11 @@ mnr_l:		ld	a,0xFF
 		cp	0xA0
 		jp	nz,mnr_l
 		ret
-; mn_copy: строка «(c) MICRO-GEN» глифами 8x8 (белые, плоскость 0): MN_CPY_N тайлов с колонки MN_CPY_C, строка 19
+; mn_copy: строка «(c) MICRO-GEN» глифами 8x8 (белые, плоскость 0): MN_CPY_N тайлов с колонки MN_CPY_C, строка 15
 mn_copy:	ld	hl,mn_cpg
 		ld	d,0x80+MN_CPY_C
 		ld	c,MN_CPY_N
-mnc_t:		ld	e,0xDF-8*19
+mnc_t:		ld	e,0xDF-8*15
 		ld	b,8
 mnc_l:		ld	a,(hl)
 		ld	(de),a
@@ -183,7 +195,7 @@ mr_i:		ld	hl,mn_it
 		jp	nz,mr_i2
 		ld	c,6			; «начать игру» — оранжевый
 mr_i2:		ld	e,6
-		call	mt1
+		call	mt1d			; пункты — двойной высоты, как на экранах концовок
 		ld	a,b
 		cp	2
 		jp	nc,mr_i3
@@ -196,7 +208,7 @@ mr_i2:		ld	e,6
 		ld	a,0x20
 		jp	z,mr_i4
 		ld	a,'*'
-mr_i4:		call	tile_px
+mr_i4:		call	tile_dbl_px
 mr_i3:		inc	b
 		ld	a,b
 		cp	3
@@ -229,6 +241,22 @@ mt2:		ld	a,e
 		call	tile_px
 		inc	e
 		jp	mt2
+
+; mt1d: то же двойной высотой (tile_dbl: строки D и D+1)
+mt1d:		ld	a,(hl)
+		inc	hl
+		or	a
+		jp	z,mt2d
+		call	tile_dbl_px		; без записи в ATTR (строка может быть отрицательной — верхняя полоса)
+		inc	e
+		jp	mt1d
+mt2d:		ld	a,e
+		cp	32
+		ret	nc
+		ld	a,0x20
+		call	tile_dbl_px
+		inc	e
+		jp	mt2d
 
 ; ---- мелодия Олега Никитина (AY -> ВИ53, tools/mkmusic.py): канал 1 (порт 0x0A, слово 0x76) — мелодия, канал 2 (порт 0x09, слово 0xB6) — арпеджио аккордов; ноты ходит ISR раз в кадр ----
 mus_start:	ld	a,MUS_PASSES-1		; сколько раз повторить после первого прохода
