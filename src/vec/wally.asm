@@ -45,7 +45,7 @@ wb_hi:		add	a,0x2F
 		jp	wb2
 wb1:		ld	a,c
 wb2:		push	bc
-		call	bmp16w			; верхняя половина — кожа (оранжевая, плоскости 1+2)
+		call	bmp16			; верхняя половина — кожа (оранжевая, плоскости 1+2)
 		pop	bc
 		ld	a,(BitmapY)
 		add	a,0x10
