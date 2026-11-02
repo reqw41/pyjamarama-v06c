@@ -17,7 +17,7 @@ def enc(s): return ','.join('0x%02X'%CODE[c] for c in s)+',0'
 out=['; сгенерировано tools/mkmenu.py (не править): тексты меню']
 def rec(r,c,ink,s): return '\tdb\t%d,%d,%d,%s'%(r,c,ink,enc(s))
 F=M['foot']; cs='   '+F[0]   # слева место под значок копирайта (колонки 0..1 + пробел)
-out.append('mn_head:\n'+rec(0,(32-len(M['head']))//2,7,M['head'])+'\n'+rec(17,(32-len(M['hint']))//2,7,M['hint'])+'\n'
+out.append('mn_head:\n'+rec(0,(32-len(M['head']))//2,7,M['head'])+'\n'
  +rec(19,(32-len(cs))//2,6,cs)+'\n'+rec(20,(32-len(F[1]))//2,6,F[1])+'\n'+rec(21,(32-len(F[2]))//2,6,F[2])+'\n\tdb\t0xFF')
 out.append('MN_CPY_C\tEQU\t%d\t; колонка значка копирайта'%((32-len(cs))//2))
 for i,s in enumerate(M['items']): out.append('mn_it%d:\tdb\t%d,6,%s'%(i,3+2*i,enc(s)))
