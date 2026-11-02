@@ -3,15 +3,19 @@
 ; Меню: выбор управления (клавиатура / джойстик «П» включаются и выключаются) и старт игры; тексты — menu_txt.inc (tools/mkmenu.py).
 
 
-MENU_SCROLL	EQU	0x25
+MENU_SCROLL	EQU	0x2A
 ; ---- заставка (только при запуске) ----
 title_start:	ld	sp,STACK_TOP
-		ld	hl,pal_title
+		ld	hl,title_tail		; начало хвоста — 16 нулей: чёрная палитра, распаковку не видно
 		ld	(pal_ptr),hl
-		ld	a,14			; бордюр на заставке — белый (индекс 14 = код 7, плоскости 0..2)
+		xor	a			; бордюр на заставке — чёрный (индекс 0 = код 0, чёрный)
 		ld	(bord_idx),a
 		ld	a,3
 		ld	(pal_load),a
+		ld	c,4
+tt_b:		call	frame_wait		; подождать, пока чёрная палитра загрузится
+		dec	c
+		jp	nz,tt_b
 		ld	hl,tp_0			; плоскость 0 (поток лежит в плоскости 2)
 		ld	bc,0x8000
 		call	dzx0
@@ -30,6 +34,21 @@ tt_fl:		ld	a,(hl)
 		inc	de
 		dec	b
 		jp	nz,tt_fl
+		ld	hl,pal_fade		; плавное появление: яркость палитры 1/8 .. 8/8 (pal_title — последняя ступень)
+		ld	c,8
+tt_fd:		ld	(pal_ptr),hl
+		ld	a,3
+		ld	(pal_load),a
+		ld	de,16
+		add	hl,de
+		ld	b,4
+tt_fw:		push	bc
+		call	frame_wait
+		pop	bc
+		dec	b
+		jp	nz,tt_fw
+		dec	c
+		jp	nz,tt_fd
 tt_up:		call	any_key			; ждать, пока всё отпущено
 		jp	nz,tt_up
 tt_w:		call	frame_wait

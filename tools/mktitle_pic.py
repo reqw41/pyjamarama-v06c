@@ -75,6 +75,13 @@ print('заставка: ZX0 плоскостей',sz,'всего',sum(sz))
 TAIL=bytes(planes[2][0x2000-TRIM:])
 with open('src/vec/title_pal.inc','w') as f:
     f.write('; сгенерировано tools/mktitle_pic.py (не править)\n')
+    assert not any(TAIL[:16]),'первые 16 Б хвоста — чёрная палитра для начала фейда'
+    def fade(b,k):
+        r,g,bl=b&7,(b>>3)&7,b>>6
+        return ((bl*k+4)>>3)<<6|((g*k+4)>>3)<<3|((r*k+4)>>3)
+    base=[VB[c] for c in (0,4,2,6,1,5,3,7)]
+    f.write('pal_fade:\n')
+    for k in range(1,8): f.write('\tdb\t'+','.join('0x%02X,0x%02X'%(fade(b,k),fade(b,k)) for b in base)+'\t; яркость %d/8\n'%k)
     f.write('pal_title:\tdb\t'+','.join('0x%02X,0x%02X'%(VB[c],VB[c]) for c in (0,4,2,6,1,5,3,7))+'\t; пары по индексу аппаратной палитры (порядок кодов 0,4,2,6,1,5,3,7)\n')
     f.write('TP_TRIM\tEQU\t%d\n'%TRIM)
     f.write('title_tail:\tdb\t'+','.join(str(b) for b in TAIL)+'\t; хвост плоскости 2 не сжат: запас для распаковки на месте\n')
