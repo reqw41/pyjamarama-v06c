@@ -16,24 +16,36 @@ px=FIX.apply(px)
 _col='art/title/colored.png'
 if os.path.exists(_col):
     from PIL import Image as _I
+    from collections import Counter as _C
     ci=_I.open(_col).convert('RGB')
-    if ci.size!=(256,192): ci=ci.resize((256,192),_I.BOX)
-    la=_I.open('art/title/outline_1x.png').convert('L')
-    cp=[[list(ci.getpixel((x,y))) for x in range(256)] for y in range(192)]
     def near(c):
         return min(range(8),key=lambda k:sum((c[i]-PAL[k][i])**2 for i in range(3)))
-    dith=os.environ.get('PJ_DITHER','0')=='1'
-    for y in range(192):
-        for x in range(256):
-            c=cp[y][x]; k=near(c); px[y][x]=k
-            if dith:
-                e=[c[i]-PAL[k][i] for i in range(3)]
-                for dx,dy,w in((1,0,7),(-1,1,3),(0,1,5),(1,1,1)):
-                    nx,ny=x+dx,y+dy
-                    if 0<=nx<256 and 0<=ny<192:
-                        for i in range(3): cp[ny][nx][i]+=e[i]*w/16
-            if la.getpixel((x,y))==0: px[y][x]=0
-    print('раскраска взята из',_col)
+    if abs(ci.size[0]/ci.size[1]-1)<0.05:
+        # квадратная картинка: 192x192 по центру, поля 32 пикселя слева и справа — белые (код 7). Блок исходных пикселей -> один пиксель: контур (>=22% тёмных) приоритетнее, иначе самый частый цвет
+        S=ci.size[0]; ref=[[near(ci.getpixel((x,y))) for x in range(S)] for y in range(S)]
+        px=[[7]*256 for _ in range(192)]
+        for ty in range(192):
+            for tx in range(192):
+                x0,x1=tx*S//192,max((tx+1)*S//192,tx*S//192+1); y0,y1=ty*S//192,max((ty+1)*S//192,ty*S//192+1)
+                cnt=_C(ref[y][x] for y in range(y0,y1) for x in range(x0,x1)); n=sum(cnt.values())
+                px[ty][32+tx]=0 if cnt[0]>=0.22*n else cnt.most_common(1)[0][0] if cnt.most_common(1)[0][0]!=0 else cnt.most_common(2)[-1][0]
+        print('раскраска взята из',_col,'(квадрат 192x192 по центру)')
+    else:
+        if ci.size!=(256,192): ci=ci.resize((256,192),_I.BOX)
+        la=_I.open('art/title/outline_1x.png').convert('L')
+        cp=[[list(ci.getpixel((x,y))) for x in range(256)] for y in range(192)]
+        dith=os.environ.get('PJ_DITHER','0')=='1'
+        for y in range(192):
+            for x in range(256):
+                c=cp[y][x]; k=near(c); px[y][x]=k
+                if dith:
+                    e=[c[i]-PAL[k][i] for i in range(3)]
+                    for dx,dy,w in((1,0,7),(-1,1,3),(0,1,5),(1,1,1)):
+                        nx,ny=x+dx,y+dy
+                        if 0<=nx<256 and 0<=ny<192:
+                            for i in range(3): cp[ny][nx][i]+=e[i]*w/16
+                if la.getpixel((x,y))==0: px[y][x]=0
+        print('раскраска взята из',_col)
 # палитра Вектора: BBGGGRRR
 def vbyte(c): return ((round(c[2]/85)&3)<<6)|((round(c[1]/36.43)&7)<<3)|(round(c[0]/36.43)&7)
 VB=[vbyte(c) for c in PAL]
