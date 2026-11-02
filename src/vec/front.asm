@@ -210,10 +210,11 @@ mnr_l:		ld	a,0xFF
 		cp	0xA0
 		jp	nz,mnr_l
 		ret
-; mn_copy: значок копирайта 8x8 (белый, плоскость 0) в колонке MN_CPY_C, строка 19
+; mn_copy: строка «(c) MICRO-GEN» глифами 8x8 (белые, плоскость 0): MN_CPY_N тайлов с колонки MN_CPY_C, строка 19
 mn_copy:	ld	hl,mn_cpg
 		ld	d,0x80+MN_CPY_C
-		ld	e,0xDF-8*19
+		ld	c,MN_CPY_N
+mnc_t:		ld	e,0xDF-8*19
 		ld	b,8
 mnc_l:		ld	a,(hl)
 		ld	(de),a
@@ -221,8 +222,10 @@ mnc_l:		ld	a,(hl)
 		dec	e
 		dec	b
 		jp	nz,mnc_l
+		inc	d
+		dec	c
+		jp	nz,mnc_t
 		ret
-mn_cpg:		db	0x3C,0x42,0x99,0xA1,0xA1,0x99,0x42,0x3C
 ; перерисовать пункты (курсор оранжевый, у включённых устройств звёздочка) и панель описания
 mn_redraw:	ld	b,0
 mr_i:		ld	a,(m_cur)
@@ -307,7 +310,10 @@ mt2:		ld	a,e
 		jp	mt2
 
 ; ---- мелодия Олега Никитина (AY -> ВИ53, tools/mkmusic.py): канал 1 (порт 0x0A, слово 0x76) — мелодия, канал 2 (порт 0x09, слово 0xB6) — арпеджио аккордов; ноты ходит ISR раз в кадр ----
-mus_start:	ld	hl,mus_mel
+mus_start:	ld	a,MUS_PASSES-1		; сколько раз повторить после первого прохода
+		ld	(m1_rep),a
+		ld	(m2_rep),a
+		ld	hl,mus_mel
 		ld	(m1_p),hl
 		ld	hl,mus_chd
 		ld	(m2_p),hl
@@ -339,7 +345,18 @@ mus_tick:	ld	a,(mus_on)
 		inc	hl
 		or	a
 		jp	nz,mt1s
-		jp	mus_stop		; конец мелодии — играет один раз
+		ld	a,(m1_rep)		; маркер конца: ещё есть проходы — сначала; иначе концовка, а за ней второй маркер — стоп
+		or	a
+		jp	z,mt1e
+		dec	a
+		ld	(m1_rep),a
+		ld	hl,mus_mel
+mt1e:		ld	b,(hl)
+		inc	hl
+		ld	a,(hl)
+		inc	hl
+		or	a
+		jp	z,mus_stop
 mt1s:		ld	(m1_p),hl
 		ld	(m1_c),a
 		ld	a,b
@@ -366,8 +383,19 @@ mt1c:		ld	hl,m1_c
 		ld	a,(hl)
 		or	a
 		jp	nz,mt2s
+		ld	a,(m2_rep)
+		or	a
+		jp	z,mt2e
+		dec	a
+		ld	(m2_rep),a
 		ld	hl,mus_chd
+		jp	mt2f
+mt2e:		inc	hl			; концовка; за ней второй ноль — стоп
 		ld	a,(hl)
+		or	a
+		jp	z,mus_stop
+		jp	mt2s
+mt2f:		ld	a,(hl)
 mt2s:		inc	hl
 		ld	b,(hl)			; низ
 		inc	hl
@@ -444,6 +472,9 @@ mus_div_hl:	dec	a			; A = нота 1..61 -> HL -> делитель
 		ret
 mus_pat:	db	2,1,0,0,1,2
 mus_on:		db	0
+MUS_PASSES	EQU	2		; мелодия играется 2 раза, потом концовка и тишина
+m1_rep:		db	0
+m2_rep:		db	0
 m1_c:		db	0
 m1_p:		dw	0
 m2_c:		db	0

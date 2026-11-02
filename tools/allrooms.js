@@ -10,9 +10,12 @@ const m=E.mk(path.join(ROOT,'build/vec/pyjama.r0m'));
 const press=(k,n)=>{const e={vk:[0,4]}[k];m.keyboard.matrix[e[0]]|=e[1];for(let i=0;i<n;i++)m.frame();m.keyboard.matrix[e[0]]&=~e[1];for(let i=0;i<20;i++)m.frame();};
 for(let i=0;i<150;i++)m.frame();press('vk',6);for(let i=0;i<30;i++)m.frame();press('vk',6);for(let i=0;i<120;i++)m.frame();
 const cpu=m.cpu;
-function call(label,regs){const sp0=cpu.sp,pc0=cpu.pc,SENT=0xFFFE;
-  const s=cpu.sp-2;m.wr(s,SENT&255);m.wr(s+1,SENT>>8);cpu.sp=s;cpu.pc=sy[label];if(regs){if(regs.hl!==undefined){cpu.regs[4]=regs.hl>>8;cpu.regs[5]=regs.hl&255;}if(regs.de!==undefined){cpu.regs[2]=regs.de>>8;cpu.regs[3]=regs.de&255;}}
-  const ei=cpu.iff;cpu.iff=false;let t=0;while(cpu.pc!==SENT){cpu.instruction();if(++t>3e7)throw new Error('не вернулся '+label);}cpu.sp=sp0;cpu.pc=pc0;cpu.iff=ei;}
+function call(label){const sp0=cpu.sp,pc0=cpu.pc,SENT=0xFF00;
+  const sv=[m.rd(SENT),m.rd(SENT+1),m.rd(SENT+2)];m.wr(SENT,0xC3);m.wr(SENT+1,SENT&255);m.wr(SENT+2,SENT>>8);   // jmp $ — «возврат» зависает, кадры доходят до конца
+  const s=cpu.sp-2;m.wr(s,SENT&255);m.wr(s+1,SENT>>8);cpu.sp=s;cpu.pc=sy[label];cpu.iff=true;
+  let done=false;for(let f=0;f<400&&!done;f++){m.frame();if(cpu.pc===SENT)done=true;}
+  if(!done)throw new Error('не вернулся '+label);
+  for(let k=0;k<3;k++)m.wr(SENT+k,sv[k]);cpu.sp=sp0;cpu.pc=pc0;}
 const rd=a=>m.rd(a);
 const PAL=Array.from({length:16},(_,i)=>m.rd(sy.pal+i));
 const rgb=c=>[(c&7)*255/7|0,((c>>3)&7)*255/7|0,((c>>6)&3)*255/3|0];
@@ -22,8 +25,7 @@ for(let n=A;n<=B;n++){
   const p=m.rd(z2n(0x0758)+2*n)|m.rd(z2n(0x0758)+2*n+1)<<8;
   if(!p||p<0x0800||p>0xFF00){console.log('комната',n,'пропуск (указатель %s)',p.toString(16));continue;}
   m.wr(sy.Wally_RoomNo,n);
-  try{call('clear_area');call('fill_attr');call('Game_InitStats');m.wr(sy.Wally_RoomNo,n);call('RoomDraw');
-    call('FurnitureDraw',{hl:sy.ScoreBoard_Item,de:1});call('Inv_Redraw');call('LivesReset');call('milk_full');}catch(e){console.log(n,e.message);continue;}
+  try{call('Room_Enter');}catch(e){console.log(n,e.message);continue;}
   shot(path.join(OUT,'r'+String(n).padStart(2,'0')+'.png'));
 }
 console.log('готово',OUT);

@@ -58,10 +58,11 @@ ch=[(l,n,0,0,5) for n,l in rle(bas)]
 assert all(c[0]<128 for c in ch)
 assert sum(e[1] for e in ev)==N==sum(c[0] for c in ch)
 div=[round(1.5e6/(440*2**((m+35-69)/12))) for m in range(1,62)]
-sc1=[];[sc1.extend([n,l]) for n,l in ev]; sc1+=[0,0]
+TAIL=36   # концовка после последнего прохода: тоника, держится 36 кадров
+sc1=[];[sc1.extend([n,l]) for n,l in ev]; sc1+=[0,0, note(57+TR),TAIL, 0,0,0,0]
 sc2=[]
 for l,lo,m,t,typ in ch: sc2+=[l|(typ==6)<<7,lo,m|t<<4]
-sc2+=[0]
+sc2+=[0, TAIL,note(midi_env(35)),0, 0,0]
 out="; сгенерировано tools/mkmusic.py (не править): %d кадров, мелодия %d нот, бас %d\n"%(N,len(ev),len(ch))
 def lines(lbl,op,v):
     o=lbl+':\n'
