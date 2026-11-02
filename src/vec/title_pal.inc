@@ -1,6 +1,6 @@
 ; сгенерировано tools/mktitle_pic.py (не править)
 pal_title:	db	0x41,0x41,0xAA,0xAA,0x56,0x56,0x6F,0x6F,0xD2,0xD2,0xF3,0xF3,0x9F,0x9F,0xFF,0xFF	; пары по индексу аппаратной палитры (порядок кодов 0,4,2,6,1,5,3,7)
 TP_TRIM	EQU	32
-TP0_LEN	EQU	2052
+TP0_LEN	EQU	2055
 TP1_LEN	EQU	2321
-TP2_LEN	EQU	2982
+TP2_LEN	EQU	2989
