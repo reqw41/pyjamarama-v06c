@@ -19,9 +19,10 @@ if os.path.exists(_col):
     from PIL import Image as _I
     from collections import Counter as _C
     ci=_I.open(_col).convert('RGB')
-    SKIN=(253,194,105)          # телесный цвет модели -> белый (код 7): лицо, шея и руки как в оригинальной картинке
+    SKIN=(253,194,105)          # телесный цвет модели: в палитре его нет — получается упорядоченным дизерингом оранжевого и белого (код 8 — «кожа»)
+    BAYER4=[[0,8,2,10],[12,4,14,6],[3,11,1,9],[15,7,13,5]]
     def near(c):
-        if sum((c[i]-SKIN[i])**2 for i in range(3))<45**2: return 7
+        if sum((c[i]-SKIN[i])**2 for i in range(3))<45**2: return 8
         return min(range(8),key=lambda k:sum((c[i]-PAL[k][i])**2 for i in range(3)))
     if abs(ci.size[0]/ci.size[1]-1)<0.05:
         # квадратная картинка: 192x192 по центру, поля 32 пикселя слева и справа — белые (код 7). Блок исходных пикселей -> один пиксель: контур (>=22% тёмных) приоритетнее, иначе самый частый цвет
@@ -31,7 +32,8 @@ if os.path.exists(_col):
             for tx in range(256):
                 x0,x1=tx*S//256,max((tx+1)*S//256,tx*S//256+1); y0,y1=ty*S//256,max((ty+1)*S//256,ty*S//256+1)
                 cnt=_C(ref[y][x] for y in range(y0,y1) for x in range(x0,x1)); n=sum(cnt.values())
-                px[ty][tx]=0 if cnt[0]>=0.22*n else cnt.most_common(1)[0][0] if cnt.most_common(1)[0][0]!=0 else cnt.most_common(2)[-1][0]
+                v=0 if cnt[0]>=0.22*n else cnt.most_common(1)[0][0] if cnt.most_common(1)[0][0]!=0 else cnt.most_common(2)[-1][0]
+                px[ty][tx]=(6 if BAYER4[ty%4][tx%4]<10 else 7) if v==8 else v
         print('раскраска взята из',_col,'(квадрат на весь экран 256x256)')
     else:
         if ci.size!=(256,192): ci=ci.resize((256,192),_I.BOX)
