@@ -39,8 +39,9 @@ for i in range(16):
 gx_se{i}:	inc	de
 		dec	l""")
 A("		ret")
-A("""gx_aligned:	ld	b,16			; выровненный случай (X&7 = 0) — цикл (развёртка не нужна: редкий путь, экономия памяти)
-gx_al0:		ld	a,(de)
+A("gx_aligned:")
+for i in range(16):
+    A(f"""		ld	a,(de)
 		inc	de
 		xor	(hl)
 		ld	(hl),a
@@ -50,9 +51,7 @@ gx_al0:		ld	a,(de)
 		xor	(hl)
 		ld	(hl),a
 		dec	h
-		dec	l
-		dec	b
-		jp	nz,gx_al0
-		ret""")
+		dec	l""")
+A("		ret")
 open('src/vec/bmp16_gen.inc','w').write('\n'.join(lines)+'\n')
 print('bmp16_gen.inc:',len(lines),'строк')

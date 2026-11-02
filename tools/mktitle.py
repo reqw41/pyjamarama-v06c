@@ -90,7 +90,6 @@ cellcol={}
 for (cy,cx),cn in tally.items(): cellcol[(cy,cx)]=cn.most_common(1)[0][0]; vmap[cy*32+cx]=(7<<3)|cellcol[(cy,cx)]
 exc=[(X,Y,zc) for (X,Y),zc in sorted(pcol_t.items()) if zc!=cellcol[(Y>>3,X>>3)]]
 print('смешанных ячеек: %d, пикселей-исключений: %d'%(sum(1 for c in tally.values() if len(c)>1),len(exc)))
-if os.environ.get('PJ_SMALL'): exc=[]            # сборка для стендов (PJ_SMALL=1): без исключений логотипа и с минимальным логотипом игры — экономия низкой памяти
 fixed=0
 for cy in range(24):
     for cx in range(32):
@@ -149,7 +148,6 @@ else:
         for y,row in enumerate(L['mask']):
             for x,v in enumerate(row):
                 if v: pcol_g[((cb+L['col0'])*8+L['xoff']+x,yb+L['dy']+y)]=GAMEV[L['id']]
-if os.environ.get('PJ_SMALL'): pcol_g={(128,16):1}
 assert pcol_g,'пустой логотип игры'
 c0=min(x for x,y in pcol_g)>>3; c1=max(x for x,y in pcol_g)>>3; r0=min(y for x,y in pcol_g); r1=max(y for x,y in pcol_g)
 SC=c1-c0+1; ROWS=r1-r0+1
