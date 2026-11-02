@@ -21,7 +21,7 @@ def zx0(buf,name):
 # ================= логотип игры: цвета PICO-8 по пикселям, три плоскости =================
 pcol_g={}                                # (x,y холста 256x32) -> код цвета 1..7
 _lg='art/logo_game_%s.png'%PJ_LANG
-ART_G=_lg if (PJ_LANG!='en' and os.path.exists(_lg)) else 'art/logo_game.png'
+ART_G='art/logo_game.png'   # один логотип (английский) для обеих языковых версий
 if os.path.exists(ART_G):
     im=Image.open(ART_G).convert('RGBA'); assert im.size==(256,32),ART_G+' должен быть 256x32'
     for y in range(32):

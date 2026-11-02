@@ -543,8 +543,7 @@ Game_Start:	ld	sp,STACK_TOP
 		ld	(Inv_CurrentFrame),hl
 		xor	a
 		ld	(Inv___Flag),a
-		call	clear_screen
-		call	draw_logo		; логотип «Pyjamarama» в нижней полосе (вне 192 строк ZX); буфер распаковки — ATTR, поэтому до fill_attr
+		call	clear_area		; логотип «Pyjamarama» лежит в нижней полосе экрана (вне 192 строк ZX) с заставки — не стирается
 		call	fill_attr
 		call	Game_InitStats
 		call	RoomDraw

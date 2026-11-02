@@ -38,6 +38,27 @@ boot:		ld	a,0x88			; ППА: порт A — скролл/ряд клавиату
 clear_screen:	ld	hl,0x8000
 		ld	bc,0x6000
 		jp	cs0
+clear_area:	ld	d,0x80			; весь экран, кроме логотипа (колонки LOGO_PAGE.. в каждой плоскости, строки LOGO_L0-LOGO_ROWS+1..LOGO_L0)
+ca_p:		ld	a,d
+		and	0x1F
+		sub	LOGO_PAGE & 0x1F
+		cp	LOGO_COLS
+		ld	e,0
+		jp	nc,ca_n
+		xor	a
+		ld	(de),a			; байты 0..1 колонки и всё выше логотипа
+		inc	e
+		ld	(de),a
+		ld	e,LOGO_L0+1
+ca_n:		xor	a
+ca_l:		ld	(de),a
+		inc	e
+		jp	nz,ca_l
+		inc	d
+		ld	a,d
+		cp	0xE0
+		jp	nz,ca_p
+		ret
 clear_planes12:	ld	hl,0xA000		; только плоскости 1-2 (0xA000..0xDFFF)
 		ld	bc,0x4000
 cs0:		ld	(hl),0
@@ -138,14 +159,15 @@ vs0:		ld	a,b
 		ld	(kb_chg),a
 		ld	a,0x88
 		out	(0x00),a
-		ld	a,0xFF
-		out	(0x03),a		; скролл на место (порт 3 = скролл!)
+		ld	a,(scroll_v)
+		out	(0x03),a		; скролл на место (порт 3 = скролл!); 0xFF — без сдвига, в меню логотип сдвинут наверх
 		ld	a,(bord_idx)
 		out	(0x02),a
 		ret
 
 ; --- вход игры: in_state = IN_RIGHT|IN_LEFT|IN_JUMP из клавиатуры и джойстика «П» -------------------------------
 ; клавиши: стрелки ←/→, пробел и ↑ — прыжок; как в ZX-оригинале O/P/M (влево/вправо/прыжок); джойстик «П»: огонь — прыжок
+scroll_v:	db	0xFF
 in_state:	db	0
 in_mask:	db	3
 in_build:	ld	a,(vec_kbmat+0)		; стрелки: 0x10 влево, 0x40 вправо, 0x20 вверх

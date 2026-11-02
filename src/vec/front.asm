@@ -3,6 +3,7 @@
 ; Меню: выбор управления (клавиатура / джойстик «П» включаются и выключаются) и старт игры; тексты — menu_txt.inc (tools/mkmenu.py).
 
 
+MENU_SCROLL	EQU	0x25
 ; ---- заставка (только при запуске) ----
 title_start:	ld	sp,STACK_TOP
 		ld	hl,pal_title
@@ -34,11 +35,15 @@ tt_up:		call	any_key			; ждать, пока всё отпущено
 tt_w:		call	frame_wait
 		call	any_key
 		jp	z,tt_w
+		call	clear_screen		; заставка убрана: логотип игры распаковывается в экран один раз и остаётся на всю игру
+		call	draw_logo
 		jp	title_return
 
 ; ---- меню ----
 title_return:	call	mus_start		; после игры мелодия меню заново
 menu_start:	ld	sp,STACK_TOP
+		ld	a,MENU_SCROLL		; сдвиг экрана скроллингом: логотип из нижней полосы — наверх
+		ld	(scroll_v),a
 		xor	a
 		ld	(inv_cheat),a
 		ld	(paused),a
@@ -51,8 +56,7 @@ menu_start:	ld	sp,STACK_TOP
 		ld	(bord_idx),a		; в меню и в игре бордюр — цвет 0
 		ld	a,3
 		ld	(pal_load),a
-		call	clear_screen
-		call	draw_logo		; логотип в нижней полосе (буфер распаковки — ATTR)
+		call	clear_area		; логотип уже в экране — не трогаем
 		ld	hl,Bmp_Tiles		; база тайлов шрифта (в образе — ZX-адрес)
 		ld	(TileStartPtr),hl
 		ld	hl,mn_head
@@ -153,6 +157,8 @@ mnl_s1:		ld	(in_mask),a
 mn_go:		call	mus_stop
 		call	any_key			; старт: дождаться, пока отпустят кнопки (ВК не должен стать паузой)
 		jp	nz,mn_go
+		ld	a,0xFF
+		ld	(scroll_v),a		; в игре без сдвига
 		xor	a
 		ld	(paused),a
 		ld	hl,vk_prev
@@ -275,11 +281,7 @@ mus_tick:	ld	a,(mus_on)
 		inc	hl
 		or	a
 		jp	nz,mt1s
-		ld	hl,mus_mel
-		ld	b,(hl)
-		inc	hl
-		ld	a,(hl)
-		inc	hl
+		jp	mus_stop		; конец мелодии — играет один раз
 mt1s:		ld	(m1_p),hl
 		ld	(m1_c),a
 		ld	a,b
