@@ -88,8 +88,6 @@ menu_start:	ld	sp,STACK_TOP
 		ld	hl,mn_head
 		call	mn_list
 		call	mn_copy			; значок (c) в круге (после текста: пробелы строки его бы стёрли)
-		ld	a,2			; курсор на «Начать игру»
-		ld	(m_cur),a
 		call	mn_redraw
 mnl_loop:	call	frame_wait
 		ld	a,(vec_kbmat+1)		; Ф1 + Ф3 вместе — старт с неуязвимостью
@@ -98,87 +96,25 @@ mnl_loop:	call	frame_wait
 		jp	nz,mnl_nc
 		ld	(inv_cheat),a
 		jp	mn_go
-mnl_nc:		ld	a,(vec_kbmat)		; кнопки: бит 0 — вверх, 1 — вниз, 2 — выбор
-		ld	b,a
-		ld	c,0
-		and	0x20			; стрелка вверх
-		jp	z,mnl1
-		inc	c
-mnl1:		ld	a,b
-		and	0x80			; стрелка вниз
-		jp	z,mnl2
-		ld	a,c
-		or	2
+mnl_nc:		ld	a,(vec_kbmat+2)		; цифры, как в ZX: 1 — клавиатура, 2 — джойстик, 0 — начать игру (только новые нажатия)
+		and	7
+		ld	hl,m_prev
+		ld	b,(hl)
+		ld	(hl),a
 		ld	c,a
-mnl2:		ld	a,b
-		and	0x04			; ВК
-		jp	nz,mnl3
-		ld	a,(vec_kbmat+7)		; пробел
-		and	0x80
-		jp	z,mnl4
-mnl3:		ld	a,c
-		or	4
-		ld	c,a
-mnl4:		in	a,(0x06)		; джойстик «П»: огонь — выбор
-		ld	hl,vj_rest+1
-		xor	(hl)
-		ld	b,a
-		and	0x30
-		jp	nz,mnl5
 		ld	a,b
-		and	0xC0
-		jp	z,mnl5
-		ld	a,c
-		or	4
-		ld	c,a
-mnl5:		ld	a,(in_state)		; джойстик влево/вправо — вверх/вниз по пунктам (в in_state же клавиши, но они тоже листают)
-		ld	b,a
-		and	IN_LEFT
-		jp	z,mnl6
-		ld	a,c
-		or	1
-		ld	c,a
-mnl6:		ld	a,b
-		and	IN_RIGHT
-		jp	z,mnl7
-		ld	a,c
-		or	2
-		ld	c,a
-mnl7:		ld	hl,m_prev		; только новые нажатия
-		ld	a,(hl)
 		cpl
 		and	c
-		ld	b,a
-		ld	(hl),c
-		ld	a,b
 		rrca
-		jp	nc,mnl_dn
-		ld	a,(m_cur)		; вверх
-		or	a
-		jp	z,mnl_loop
-		dec	a
-		jp	mnl_mv
-mnl_dn:		rrca
-		jp	nc,mnl_sel
-		ld	a,(m_cur)		; вниз
-		cp	2
-		jp	z,mnl_loop
-		inc	a
-mnl_mv:		ld	(m_cur),a
-		call	mn_redraw
-		jp	mnl_loop
-mnl_sel:		rrca
+		jp	c,mn_go
+		rrca
+		jp	nc,mnl_2
+		ld	a,1			; клавиатура
+		jp	mnl_set
+mnl_2:		rrca
 		jp	nc,mnl_loop
-		ld	a,(m_cur)		; выбор пункта
-		cp	2
-		jp	z,mn_go
-		inc	a			; 0 -> маска 1, 1 -> маска 2
-		ld	b,a
-		ld	a,(in_mask)
-		xor	b
-		jp	nz,mnl_s1
-		ld	a,3			; обе выключены — включить обе
-mnl_s1:		ld	(in_mask),a
+		ld	a,2			; джойстик «П»
+mnl_set:	ld	(in_mask),a
 		call	mn_redraw
 		jp	mnl_loop
 mn_go:		call	mus_stop
@@ -228,12 +164,7 @@ mnc_l:		ld	a,(hl)
 		ret
 ; перерисовать пункты (курсор оранжевый, у включённых устройств звёздочка) и панель описания
 mn_redraw:	ld	b,0
-mr_i:		ld	a,(m_cur)
-		cp	b
-		ld	c,1			; белый
-		jp	nz,mr_i1
-		ld	c,6			; оранжевый (курсор)
-mr_i1:		ld	hl,mn_it
+mr_i:		ld	hl,mn_it
 		ld	e,b
 		ld	d,0
 		add	hl,de
@@ -244,15 +175,13 @@ mr_i1:		ld	hl,mn_it
 		ex	de,hl			; HL -> строка, колонка, коды
 		ld	d,(hl)
 		inc	hl
-		inc	hl			; колонка текста — 6 (задана в mt1 ниже)
-		ld	e,4			; метка курсора
-		ld	a,(m_cur)
-		cp	b
-		ld	a,0x20
+		inc	hl			; колонка текста — 6
+		ld	c,1			; белый
+		ld	a,b
+		cp	2
 		jp	nz,mr_i2
-		ld	a,'>'
-mr_i2:		call	tile_px
-		ld	e,6
+		ld	c,6			; «начать игру» — оранжевый
+mr_i2:		ld	e,6
 		call	mt1
 		ld	a,b
 		cp	2
@@ -260,7 +189,7 @@ mr_i2:		call	tile_px
 		inc	a			; маска устройства: 1 — клавиатура, 2 — джойстик
 		ld	h,a
 		ld	c,1
-		ld	e,18			; звёздочка у включённого
+		ld	e,18			; звёздочка у выбранного
 		ld	a,(in_mask)
 		and	h
 		ld	a,0x20
@@ -271,16 +200,7 @@ mr_i3:		inc	b
 		ld	a,b
 		cp	3
 		jp	c,mr_i
-		ld	a,(m_cur)		; панель
-		add	a,a
-		ld	e,a
-		ld	d,0
-		ld	hl,mn_p
-		add	hl,de
-		ld	e,(hl)
-		inc	hl
-		ld	d,(hl)
-		ex	de,hl
+		ret
 ; список записей: строка, колонка, ink, коды..., 0; конец списка — строка 0xFF
 mn_list:	ld	a,(hl)
 		inc	a

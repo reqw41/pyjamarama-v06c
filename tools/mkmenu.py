@@ -5,11 +5,9 @@ import os,sys
 sys.path.insert(0,'tools')
 import i18n
 L=os.environ.get('PJ_LANG','ru')
-EN={'head':'SELECT CONTROLS','items':['KEYBOARD','JOYSTICK','START GAME'],
- 'panels':[['LEFT, RIGHT: ARROWS OR O, P','JUMP: SPACE, UP OR M','PAUSE: ENTER','BACK TO MENU: ESC','ENTER OR SPACE - ON, OFF'],
-           ['JOYSTICK, PORT P:','LEFT, RIGHT - TILT','JUMP - FIRE OR UP','PAUSE: ENTER, MENU: ESC','ENTER OR FIRE - ON, OFF'],
-           ['PRESS ENTER, SPACE OR FIRE','AND WALLY WILL WAKE UP IN TIME','STAR - CONTROLS ENABLED']],
- 'hint':'UP, DOWN - SELECT','foot':['MICRO-GEN','VECTOR 06C VERSION','BORIS LIKHACHEV']}
+EN={'head':'SELECT CONTROLS','items':['1 KEYBOARD','2 JOYSTICK','0 START GAME'],
+ 'panel':['KEYBOARD: ARROWS OR O, P','JUMP: SPACE, UP OR M','JOYSTICK: TILT, FIRE - JUMP','PAUSE: ENTER, MENU: ESC'],
+ 'foot':['MICRO-GEN','VECTOR 06C VERSION','BORIS LIKHACHEV']}
 if L=='en': M=EN; CODE={chr(c):c for c in range(32,91)}
 else:
     T=i18n.load(L); M=T.MENU; CODE=T.CODE
@@ -31,13 +29,10 @@ seq=['(c)',' ']+list('MICRO-GEN')   # «(c) MICRO-GEN» глифами: в ру�
 cpyc=(32-len(seq))//2
 gl='mn_cpg:\n'+'\n'.join('\tdb\t'+','.join('0x%02X'%int(r.replace('.','0').replace('#','1'),2) for r in GL[g]) for g in seq)
 out.append('mn_head:\n'+rec(0,(32-len(M['head']))//2,7,M['head'])+'\n'
- +rec(20,(32-len(F[1]))//2,6,F[1])+'\n'+rec(21,(32-len(F[2]))//2,6,F[2])+'\n\tdb\t0xFF')
+ +rec(20,(32-len(F[1]))//2,6,F[1])+'\n'+rec(21,(32-len(F[2]))//2,6,F[2])+'\n'+'\n'.join(rec(10+j,0,4,t) for j,t in enumerate(M['panel']))+'\n\tdb\t0xFF')
 out.append('MN_CPY_C\tEQU\t%d\t; колонка значка копирайта\nMN_CPY_N\tEQU\t%d\n'%(cpyc,len(seq))+gl)
-for i,s in enumerate(M['items']): out.append('mn_it%d:\tdb\t%d,6,%s'%(i,3+2*i,enc(s)))
+for i,t in enumerate(M['items']): out.append('mn_it%d:\tdb\t%d,6,%s'%(i,3+2*i,enc(t)))
 out.append('mn_it:\tdw\tmn_it0,mn_it1,mn_it2')
-for k,p in enumerate(M['panels']):
-    out.append('mn_p%d:'%k+'\n'+'\n'.join(rec(10+j,0,4,s) for j,s in enumerate(p))+'\n\tdb\t0xFF')
-    assert all(len(s)<=32 for s in p),p
-out.append('mn_p:\tdw\tmn_p0,mn_p1,mn_p2')
+assert all(len(t)<=32 for t in M['panel'])
 open('src/vec/menu_txt.inc','w',encoding='utf-8').write('\n'.join(out)+'\n')
-print('меню (%s): %d Б текста'%(L,sum(len(s) for p in M['panels'] for s in p)))
+print('меню (%s): %d Б текста'%(L,sum(len(t) for t in M['panel'])))
