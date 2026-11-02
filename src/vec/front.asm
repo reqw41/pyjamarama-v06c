@@ -12,14 +12,14 @@ title_start:	ld	sp,STACK_TOP
 		ld	(bord_idx),a
 		ld	a,3
 		ld	(pal_load),a
-		call	clear_planes12		; плоскости 1-2 (плоскость 0 целиком затрёт распаковка)
 		ld	hl,title_zx0		; картинка прямо в плоскость 0
 		ld	bc,0x8000
 		call	dzx0
-		call	fill_strips		; верх и низ (линии вне картинки ZX) — белые
 		ld	hl,title_v_zx0		; карта цветов ячеек -> ATTR (игре на заставке карта не нужна: Game_Start её перезаполняет)
 		ld	bc,ATTR
 		call	dzx0
+		call	clear_planes12		; источники лежали в плоскостях 1-2: чистим только после обеих распаковок
+		call	fill_strips		; верх и низ (линии вне картинки ZX) — белые
 		call	colorize
 tt_up:		call	any_key			; ждать, пока всё отпущено
 		jp	nz,tt_up
@@ -327,7 +327,5 @@ ak0:		or	(hl)
 		or	b
 		ret
 
-title_v_zx0:	INCBIN	"../../build/vec/title_v.zx0"
 		INCLUDE	"menu_txt.inc"
 
-title_zx0:	INCBIN	"../../build/vec/title.zx0"

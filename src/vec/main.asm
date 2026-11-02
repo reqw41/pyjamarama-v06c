@@ -40,4 +40,10 @@ shift_tab:	INCBIN	"../../build/vec/shift.tab"
 LOW_END		EQU	$
 		ASSERT	LOW_END <= 0x7C00
 
+; Заставка нужна один раз при запуске: её сжатые данные лежат в плоскостях 1-2 (0xA000..), распаковываются в плоскость 0 и в ATTR, потом плоскости затирает colorize
+		ORG	0xA000
+title_zx0:	INCBIN	"../../build/vec/title.zx0"
+title_v_zx0:	INCBIN	"../../build/vec/title_v.zx0"
+		ASSERT	$ <= 0xE000
+
 		SAVEBIN	"../../build/vec/pyjama.r0m",0,0x10000
