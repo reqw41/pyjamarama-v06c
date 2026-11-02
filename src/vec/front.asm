@@ -5,7 +5,6 @@
 
 ; ---- заставка (только при запуске) ----
 title_start:	ld	sp,STACK_TOP
-		call	mus_start
 		ld	hl,pal_title
 		ld	(pal_ptr),hl
 		ld	a,14			; бордюр на заставке — белый (индекс 14 = код 7, плоскости 0..2)
@@ -35,7 +34,7 @@ tt_up:		call	any_key			; ждать, пока всё отпущено
 tt_w:		call	frame_wait
 		call	any_key
 		jp	z,tt_w
-		jp	menu_start
+		jp	title_return
 
 ; ---- меню ----
 title_return:	call	mus_start		; после игры мелодия меню заново
